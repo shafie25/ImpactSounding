@@ -4,10 +4,6 @@
 # Virtual environment
 venv/
 
-# PyTorch model weights
-*.pt
-*.pth
-
 # Large data folders
 MFCC_Images/
 Sounds/
