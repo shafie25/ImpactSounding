@@ -1,0 +1,23 @@
+# Claude Code local settings
+.claude/
+
+# Virtual environment
+venv/
+
+# PyTorch model weights
+*.pt
+*.pth
+
+# Large data folders
+MFCC_Images/
+Sounds/
+Specimens/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db

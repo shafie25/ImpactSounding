@@ -1,0 +1,13 @@
+{
+  "model": "CNN_1D",
+  "test_accuracy": 0.9975,
+  "test_precision": 0.9917,
+  "test_recall": 0.9944,
+  "test_f1": 0.9931,
+  "cv_accuracy": 1.0,
+  "cv_precision": 1.0,
+  "cv_recall": 1.0,
+  "cv_f1": 1.0,
+  "best_epoch": 43,
+  "best_val_f1": 1.0
+}
