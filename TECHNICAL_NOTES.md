@@ -375,3 +375,76 @@ The SVM and XGBoost were given 29 hand-crafted features encoding known acoustic 
 1. The raw waveform contains the same (or more) discriminating information as the hand-crafted features.
 2. With ~10,000 training examples, even a modest convolutional network can discover those discriminators without prior domain knowledge.
 3. For larger datasets or harder tasks (width/depth classification), end-to-end learning would likely pull further ahead.
+
+---
+
+## 9. Model Visualization (`visualize_models.py`)
+
+### 9.1 Architecture Summaries (torchinfo)
+
+`torchinfo` wraps PyTorch's built-in `__repr__` with a forward-pass trace to report the exact input and output tensor shape at every layer, along with per-layer and total parameter counts. This is more useful than `print(model)` because it shows how the temporal dimension shrinks through the conv stack.
+
+Example for CNN_1D — the time axis collapses from 4,410 to ~125 before Global Average Pooling:
+
+```
+Conv1d(1→32,   k=64, s=4)  input (1,1,4410)  →  output (1,32,1103)
+Conv1d(32→64,  k=32, s=2)                    →  output (1,64,548)
+Conv1d(64→128, k=16, s=2)                    →  output (1,128,272)
+Conv1d(128→256, k=8, s=2)                    →  output (1,256,134)
+AdaptiveAvgPool1d(1)                          →  output (1,256,1)
+Linear(256→64)                                →  output (1,64)
+Linear(64→2)                                  →  output (1,2)
+```
+
+Summaries are saved as UTF-8 text files to `Classifier Results/Visualization/`.
+
+### 9.2 ONNX Export
+
+ONNX (Open Neural Network Exchange) is a standardized format for representing ML models as a computation graph — nodes are operations (conv, matmul, relu), edges are tensors flowing between them. Exporting to ONNX lets you open the model in [Netron](https://netron.app), a browser-based graph viewer that renders the full architecture visually with clickable layers showing weights, kernel sizes, and tensor shapes.
+
+Both models are exported with a dummy forward pass:
+- `cnn1d.onnx` — dummy input `(1, 1, 4410)` representing one waveform
+- `cnn_mfcc_head.onnx` — dummy input `(1, 1280)` representing one EfficientNet-B0 feature vector
+
+> Note: The CNN_MFCC ONNX only covers the MLP head, not the EfficientNet-B0 backbone (which was not saved to `.pt`). To visualize the full EfficientNet architecture, export it separately before stripping the classifier.
+
+### 9.3 Grad-CAM for CNN_1D
+
+**Gradient-weighted Class Activation Mapping (Grad-CAM)** answers: *which parts of the input did the model focus on when predicting a given class?*
+
+#### How it works
+
+1. **Forward pass** — run a waveform `x` through the full network and obtain logits.
+
+2. **Target the final conv layer** — we hook the last ReLU in `conv_blocks` (after the 4th Conv1d block). At this point the representation has shape `(B, 256, ~134)` — 256 channels, each covering a compressed version of the temporal axis.
+
+3. **Backward pass** — compute the gradient of the target class score (e.g. Cracked confidence) with respect to those 256 feature maps:
+   ```
+   gradients = d(score_cracked) / d(activations)   shape: (256, ~134)
+   ```
+   A large gradient at position `(c, t)` means: "nudging channel `c` at time step `t` strongly changes the Cracked score."
+
+4. **Weight the activation maps** — global-average-pool the gradients over the time axis to get one scalar weight per channel:
+   ```
+   alpha_c = mean_t( gradients[c, t] )   shape: (256,)
+   ```
+   Then compute the weighted sum of the activation maps:
+   ```
+   CAM = ReLU( sum_c( alpha_c * activations[c, :] ) )   shape: (~134,)
+   ```
+   ReLU discards negative contributions (regions that suppressed the class score).
+
+5. **Upsample** — interpolate the `~134`-length CAM back to the original 4,410-sample input length so it aligns with the waveform. Normalize to `[0, 1]`.
+
+#### Reading the plots
+
+Each Grad-CAM plot has two panels:
+
+- **Top panel:** the raw waveform colored by CAM intensity. Warm colors (red/yellow) = the network paid close attention here; cool colors (blue) = largely ignored.
+- **Bottom panel:** the CAM signal as a filled area — a direct view of importance vs. time in milliseconds.
+
+#### What to look for
+
+- **Consistency across samples:** if all 3 Cracked samples light up the same region (e.g., 0–5 ms), the model learned a consistent acoustic discriminator. Scattered attention = overfitting or noise sensitivity.
+- **Physical plausibility:** the initial transient (0–10 ms) encodes the impact and crack-modified stress wave reflection. Resonance decay (10–200 ms) encodes structural stiffness. Model attention in these regions would be physically meaningful.
+- **Cracked vs Intact differences:** comparing the two classes' CAM maps shows what acoustic signature the model uses to separate them.
