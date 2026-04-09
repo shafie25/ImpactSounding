@@ -24,9 +24,33 @@ The paper proposes an automated AI pipeline to detect concrete cracks and classi
 | 2.2 | 0.4 mm | 40 mm | 20 mm deep |
 | 2.3 | 0.6 mm | 40 mm | 20 mm deep |
 
+**Crack geometry:** Cracks are diagonal at 45°. The depths listed in Table 1 of the paper (56.57 mm for Group 1, 28.28 mm for Group 2) are the actual diagonal crack path lengths. The vertical penetration depths — what the paper calls "40 mm deep" and "20 mm deep" — are the horizontal/vertical projections (56.57 / √2 ≈ 40 mm, 28.28 / √2 ≈ 20 mm).
+
+**Crack fabrication:** Each crack was created by fixing a polyethylene sheet inside the mold before casting and pulling it out after curing. Crack width was controlled by layering: 1 layer = 0.2 mm, 2 layers = 0.4 mm, 3 layers = 0.6 mm. Both sides of the sheet were greased with heavy oil grease to ease removal.
+
 **Hammering positions:** Lines were drawn at 2 cm intervals perpendicular to the crack. `C02`, `C04`, `C06`... = positions on the **cracked side** at 2 cm, 4 cm, 6 cm... from the crack. `N02`, `N04`... = same distances on the **intact side**. Our `Class_sounds/` folder only contains the two closest cracked positions (C02, C04) and intact specimens.
 
+**Positions used per task (paper's Table 2):**
+
+| Task | Class | Positions used |
+|------|-------|----------------|
+| Crack Detection | Intact | Series 1: C06, C08, C10 — Series 2: C04, C06, C08, C10 — all N positions |
+| Crack Detection | Cracked | Series 1: C02, C04 — Series 2: C02 only |
+| Crack Width | 0.2 / 0.4 / 0.6 mm | Series 1 (C02+C04) and Series 2 (C02 only) per width |
+| Crack Depth | 20 mm | Series 2 specimens (C02 only) |
+| Crack Depth | 40 mm | Series 1 specimens (C04 only) |
+
 **Recording setup:** Sony ECM-PCV80U condenser microphone inside a foam-lined cardboard box (500 × 400 × 40 mm high-density foam) to isolate ambient noise. 200 hammer hits recorded per position per specimen.
+
+**Class balancing (ESS):** The paper used Equal Size Sampling (ESS) — downsampling the majority class to match the minority — before training. After ESS: crack detection = 3,600 total (1,800 cracked + 1,800 intact), 70/30 split → 2,520 train / 1,080 test. Crack width = 1,800 total, 1,260 train / 540 test. Crack depth = 1,200 total, 840 train / 360 test.
+
+**Tuned SVM hyperparameters (RBF kernel, Bayesian optimization, 100 iterations):**
+
+| Task | C | γ |
+|------|---|---|
+| Crack detection | 5.33 | 0.37 |
+| Crack width | 7.04 | 0.80 |
+| Crack depth | 7.53 | 0.91 |
 
 ---
 
@@ -349,6 +373,36 @@ The 1D CNN trained directly on raw waveforms achieved **99.75% accuracy, 99.31% 
 The stark contrast between CV (within series 1, ~99%) and test (series 2, 33-42%) confirms that the models are memorizing specimen-specific acoustic signatures rather than learning generalizable width features. The 33% test accuracy is near random chance (33.3% for a 3-class problem), meaning the models learn nothing that transfers to an unseen specimen.
 
 **Interpretation:** Crack width may be fundamentally difficult to distinguish from acoustic features alone when only 2 physical specimens (one per series) are available per width class. The tabular features (Df, Vf, MFCC statistics) that work well for crack *detection* (Cracked vs Intact, 9 distinct specimens) do not generalize for crack *width* classification when specimens are few and highly varied between series. The paper's 99.44% width result likely reflects a similar random-split leakage issue.
+
+---
+
+## Limitations & Cross-Dataset Generalization
+
+### Domain Shift — Why Models Don't Transfer Out-of-the-Box
+
+All classifiers in this pipeline were trained and tested on audio from the **same six concrete specimens** recorded in the same controlled laboratory environment (same microphone, same foam-lined box, same hammer). This means models learn a mixture of:
+
+1. Genuine acoustic physics — resonance frequency shifts caused by cracks
+2. Specimen-specific fingerprints — the unique frequency response of each particular block of concrete, shaped by its exact mix, geometry, aggregate distribution, and surface texture
+
+When you try to apply these models to **different concrete samples** (e.g., from a university lab), the specimen fingerprints don't match. The model confidently classifies based on patterns it learned from the original six specimens, which are irrelevant to the new samples. The result is near-random accuracy on the new data even though the model performed at 99%+ on the original test set.
+
+This is a well-known problem in structural health monitoring called **domain shift** — and it applies to any model trained on a public dataset from specific specimens.
+
+### The Fine-Tuning Solution
+
+The standard fix is **fine-tuning**: take the pre-trained model and continue training it on a small number of labeled samples from the target environment (your lab, your specimens, your microphone). This adapts the model's learned representations to the new acoustic domain.
+
+For crack detection (Level 1), fine-tuning is tractable: the crack vs. intact signal is strong and binary, so even a modest number of labeled samples (tens to hundreds) from the new specimens would likely be sufficient for the model to recalibrate.
+
+**In our case, we were not able to collect sufficient labeled samples from the university lab** to perform fine-tuning, which meant cross-dataset transfer remained poor. This is a practical data collection bottleneck, not a fundamental flaw in the approach.
+
+### Key Takeaways
+
+- High accuracy on the paper's dataset does **not** imply high accuracy on unseen specimens from a different lab.
+- The more physically diverse the training specimens (different concrete mixes, different labs, different recording setups), the more generalizable the model.
+- Fine-tuning with even a small number of labeled samples from the target environment is the most direct path to deployment.
+- The crack width problem (Section above) is the same issue at a smaller scale — models memorized the two physical specimens per width class rather than learning width physics.
 
 ---
 

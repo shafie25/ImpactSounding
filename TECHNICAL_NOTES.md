@@ -25,6 +25,30 @@ The paper's authors fabricated six reinforced concrete blocks (400 × 100 × 100
 
 **Recording setup:** Sony ECM-PCV80U condenser microphone inside a foam-lined box (500 × 400 × 40 mm foam) to isolate ambient noise.
 
+**Crack geometry:** The cracks run at 45° through the block. The paper's Table 1 lists crack depths as 56.57 mm (Group 1) and 28.28 mm (Group 2) — these are the actual diagonal path lengths. The commonly cited "40 mm" and "20 mm" depths are the vertical projections: 56.57 / √2 ≈ 40 mm, 28.28 / √2 ≈ 20 mm. These correspond to the concrete cover depth (20 mm) and the depth beyond the steel reinforcement (40 mm) referenced in ACI standards.
+
+**Crack fabrication:** Crack width was set by layering greased polyethylene sheets inside the mold before casting (1 layer = 0.2 mm, 2 layers = 0.4 mm, 3 layers = 0.6 mm). The sheets were pulled out after 28-day curing, leaving controlled-geometry artificial cracks.
+
+**Positions used per classification task (paper's Table 2):**
+
+| Task | Class | Positions |
+|------|-------|-----------|
+| Crack Detection | Intact | Series 1: C06, C08, C10 — Series 2: C04, C06, C08, C10 — all N positions |
+| Crack Detection | Cracked | Series 1: C02, C04 — Series 2: C02 only |
+| Crack Width | Each width class | Series 1 (C02+C04) + Series 2 (C02 only) |
+| Crack Depth — 20 mm | 20 mm | Series 2 specimens, C02 only |
+| Crack Depth — 40 mm | 40 mm | Series 1 specimens, C04 only |
+
+**Equal Size Sampling (ESS):** The paper downsampled the majority class to balance datasets before training. After ESS: crack detection = 3,600 total (1,800 cracked + 1,800 intact), 70/30 → 2,520 train / 1,080 test. Crack width = 1,800 total, 1,260 / 540. Crack depth = 1,200 total, 840 / 360.
+
+**Tuned SVM hyperparameters (RBF kernel, Bayesian TPE, 100 iterations):**
+
+| Task | C | γ |
+|------|---|---|
+| Crack detection | 5.33 | 0.37 |
+| Crack width | 7.04 | 0.80 |
+| Crack depth | 7.53 | 0.91 |
+
 **What we received:** The paper provided us with pre-segmented, pre-labeled WAV files already organized into `Specimens/Class_sounds/Cracked/` and `Specimens/Class_sounds/Intact/`. Our dataset contains only the **two closest cracked positions (C02, C04)** plus all intact positions — 10,036 WAV files total.
 
 ---
@@ -640,3 +664,57 @@ The gap between CV accuracy (~99%) and test accuracy (33–42%) is the clearest 
 **Comparison to the paper:** The paper's reported 99.44% SVM accuracy for width classification almost certainly reflects a random-sample split across the same set of specimen folders, subject to the same leakage. The paper does not describe a specimen-level evaluation.
 
 **Key takeaway:** Crack width classification from acoustic features requires more physical specimens to establish genuine cross-specimen generalizability. With the current dataset (2 specimens per class), any within-dataset random split evaluation is unreliable as a measure of real-world performance.
+
+---
+
+## 13. Domain Shift & Cross-Dataset Generalization
+
+### 13.1 What Domain Shift Means Here
+
+Every physical concrete specimen has a unique acoustic fingerprint — shaped by its exact mix ratio, aggregate distribution, geometry, surface texture, and boundary conditions. When a model trains and tests on recordings from the **same set of specimens**, it learns a mix of two things:
+
+1. **Genuine crack physics** — resonance frequency shifts, energy redistribution, and spectral changes caused by cracks
+2. **Specimen fingerprints** — the characteristic frequency response of each specific block of concrete, irrelevant to any new specimen
+
+The acoustic features used in this pipeline (Df, Vf, MFCCs) capture both. Within the original dataset, the model can lean heavily on fingerprints and still get ~99% accuracy. But fingerprints don't transfer — a different lab's concrete will have completely different spectral signatures even for the same crack dimensions.
+
+This is called **domain shift**: the statistical distribution of the input changes between training and deployment. The model's decision boundary, learned on the original specimens' acoustic space, is simply wrong for the new acoustic space.
+
+### 13.2 The Hierarchy of Domain Gap
+
+| Scenario | Domain gap | Expected impact |
+|---|---|---|
+| Random split, same specimens | None (cheating) | ~99% — specimen fingerprints shared |
+| Specimen-level split, same dataset | Small (same lab, same mic, same concrete mix) | Variable — see crack width results |
+| Trained on public dataset, tested on different lab | Large (different equipment, environment, concrete) | Near-random without adaptation |
+
+The crack width results (Section 12) demonstrated that even moving from Series 1 to Series 2 specimens within the same dataset — a small domain gap — caused accuracy to collapse to random chance (~33%). Applying this to a different lab's samples, where the gap is much larger, would produce the same or worse outcome.
+
+### 13.3 Why Fine-Tuning Is the Right Fix
+
+**Fine-tuning** adapts a pre-trained model to a new domain by continuing training on a small number of labeled samples from the target environment. For crack detection (Level 1), this is tractable:
+
+- The signal is strong: cracked vs. intact is a coarse binary distinction with a clear physical basis
+- The model's learned filters (for 1D CNN) or feature weights (for SVM/XGBoost) can recalibrate quickly with relatively few new examples
+- Tens to hundreds of labeled samples (a handful of specimens, both cracked and intact, struck 200 times each) would likely be sufficient
+
+**For crack width (Level 2a):** Fine-tuning helps with domain adaptation but does not solve the data diversity problem. You still need multiple physically distinct specimens per width class in the new domain to learn generalizable width features — fine-tuning on one cracked specimen per width class in the new lab would recreate the same memorization problem described in Section 12.
+
+### 13.4 Our Practical Limitation
+
+We attempted to validate cross-dataset transfer using concrete samples collected at the university lab. We were not able to collect a sufficient number of labeled samples to fine-tune the models, and without fine-tuning, transfer accuracy was poor — consistent with the domain shift analysis above.
+
+This is a practical data collection bottleneck, not a fundamental limitation of the acoustic approach. A proper cross-lab validation or deployment would require:
+
+1. Collecting recordings from at least several physically diverse specimens in the target environment
+2. Fine-tuning (for Level 1) or training from scratch with sufficient data (for Level 2a/2b)
+3. Evaluating on held-out specimens from the same environment (not the same individual specimens used for fine-tuning)
+
+### 13.5 Relationship to the Crack Width Problem
+
+The crack width collapse and the cross-lab generalization failure are the **same underlying issue at different scales**. In both cases, the model learned specimen-specific acoustic fingerprints rather than generalizable crack physics. The only difference is the size of the domain gap:
+
+- Crack width: gap = two different Series 1 vs. Series 2 specimens from the same paper, same lab
+- Cross-lab: gap = completely different concrete, environment, and recording setup
+
+The lesson from crack width — that acoustic models need diverse specimens to generalize — applies directly to cross-dataset transfer: the more physically varied the training data, the more robust the model will be to new environments.
