@@ -1,7 +1,7 @@
 
 pytorch
-2.11.0+cpu:≤ª
-ë
+2.11.0+cpu:û¿
+µ
 input
 conv_blocks.0.weight
 conv_blocks.0.biasgetitemnode_Conv_34"Conv*
@@ -14,26 +14,26 @@
 !pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvJΩ
 pkg.torch.onnx.class_hierarchyö['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm1d', 'aten._native_batch_norm_legit_no_training.default']Jº
 pkg.torch.onnx.fx_node°%_native_batch_norm_legit_no_training : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv1d, %p_conv_blocks_1_weight, %p_conv_blocks_1_bias, %b_conv_blocks_1_running_mean, %b_conv_blocks_1_running_var, 0.1, 1e-05), kwargs = {})Jj
-pkg.torch.onnx.name_scopesL['', 'conv_blocks', 'conv_blocks.1', '_native_batch_norm_legit_no_training']J·
-pkg.torch.onnx.stack_trace¬File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopesL['', 'conv_blocks', 'conv_blocks.1', '_native_batch_norm_legit_no_training']JÖ
+pkg.torch.onnx.stack_traceÊFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\batchnorm.py", line 194, in forward
     return F.batch_norm(
-£
+«
 getitemrelu	node_relu"ReluJô
 	namespaceã: __main__.CNN1D/conv_blocks: torch.nn.modules.container.Sequential/conv_blocks.2: torch.nn.modules.activation.ReLU/relu: aten.relu.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÑ
 pkg.torch.onnx.fx_nodej%relu : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem,), kwargs = {})JJ
-pkg.torch.onnx.name_scopes,['', 'conv_blocks', 'conv_blocks.2', 'relu']J¯
-pkg.torch.onnx.stack_traceŸFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopes,['', 'conv_blocks', 'conv_blocks.2', 'relu']Jú
+pkg.torch.onnx.stack_trace˝File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\activation.py", line 143, in forward
     return F.relu(input, inplace=self.inplace)
-ö
+æ
 relu
 conv_blocks.3.weight
 conv_blocks.3.bias	getitem_3node_Conv_35"Conv*
@@ -46,26 +46,26 @@
 !pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvJΩ
 pkg.torch.onnx.class_hierarchyö['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm1d', 'aten._native_batch_norm_legit_no_training.default']J¿
 pkg.torch.onnx.fx_node•%_native_batch_norm_legit_no_training_1 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv1d_1, %p_conv_blocks_4_weight, %p_conv_blocks_4_bias, %b_conv_blocks_4_running_mean, %b_conv_blocks_4_running_var, 0.1, 1e-05), kwargs = {})Jl
-pkg.torch.onnx.name_scopesN['', 'conv_blocks', 'conv_blocks.4', '_native_batch_norm_legit_no_training_1']J·
-pkg.torch.onnx.stack_trace¬File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopesN['', 'conv_blocks', 'conv_blocks.4', '_native_batch_norm_legit_no_training_1']JÖ
+pkg.torch.onnx.stack_traceÊFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\batchnorm.py", line 194, in forward
     return F.batch_norm(
-±
+’
 	getitem_3relu_1node_relu_1"ReluJõ
 	namespaceç: __main__.CNN1D/conv_blocks: torch.nn.modules.container.Sequential/conv_blocks.5: torch.nn.modules.activation.ReLU/relu_1: aten.relu.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
 pkg.torch.onnx.fx_noden%relu_1 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_3,), kwargs = {})JL
-pkg.torch.onnx.name_scopes.['', 'conv_blocks', 'conv_blocks.5', 'relu_1']J¯
-pkg.torch.onnx.stack_traceŸFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopes.['', 'conv_blocks', 'conv_blocks.5', 'relu_1']Jú
+pkg.torch.onnx.stack_trace˝File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\activation.py", line 143, in forward
     return F.relu(input, inplace=self.inplace)
-ú
+¿
 relu_1
 conv_blocks.6.weight
 conv_blocks.6.bias	getitem_6node_Conv_36"Conv*
@@ -78,26 +78,26 @@
 !pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvJΩ
 pkg.torch.onnx.class_hierarchyö['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm1d', 'aten._native_batch_norm_legit_no_training.default']J¿
 pkg.torch.onnx.fx_node•%_native_batch_norm_legit_no_training_2 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv1d_2, %p_conv_blocks_7_weight, %p_conv_blocks_7_bias, %b_conv_blocks_7_running_mean, %b_conv_blocks_7_running_var, 0.1, 1e-05), kwargs = {})Jl
-pkg.torch.onnx.name_scopesN['', 'conv_blocks', 'conv_blocks.7', '_native_batch_norm_legit_no_training_2']J·
-pkg.torch.onnx.stack_trace¬File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopesN['', 'conv_blocks', 'conv_blocks.7', '_native_batch_norm_legit_no_training_2']JÖ
+pkg.torch.onnx.stack_traceÊFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\batchnorm.py", line 194, in forward
     return F.batch_norm(
-±
+’
 	getitem_6relu_2node_relu_2"ReluJõ
 	namespaceç: __main__.CNN1D/conv_blocks: torch.nn.modules.container.Sequential/conv_blocks.8: torch.nn.modules.activation.ReLU/relu_2: aten.relu.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
 pkg.torch.onnx.fx_noden%relu_2 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_6,), kwargs = {})JL
-pkg.torch.onnx.name_scopes.['', 'conv_blocks', 'conv_blocks.8', 'relu_2']J¯
-pkg.torch.onnx.stack_traceŸFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopes.['', 'conv_blocks', 'conv_blocks.8', 'relu_2']Jú
+pkg.torch.onnx.stack_trace˝File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\activation.py", line 143, in forward
     return F.relu(input, inplace=self.inplace)
-¢
+∆
 relu_2
 conv_blocks.9.weight
 conv_blocks.9.bias	getitem_9node_Conv_37"Conv*
@@ -110,37 +110,37 @@
 !pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvJΩ
 pkg.torch.onnx.class_hierarchyö['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm1d', 'aten._native_batch_norm_legit_no_training.default']Jƒ
 pkg.torch.onnx.fx_node©%_native_batch_norm_legit_no_training_3 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv1d_3, %p_conv_blocks_10_weight, %p_conv_blocks_10_bias, %b_conv_blocks_10_running_mean, %b_conv_blocks_10_running_var, 0.1, 1e-05), kwargs = {})Jm
-pkg.torch.onnx.name_scopesO['', 'conv_blocks', 'conv_blocks.10', '_native_batch_norm_legit_no_training_3']J·
-pkg.torch.onnx.stack_trace¬File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopesO['', 'conv_blocks', 'conv_blocks.10', '_native_batch_norm_legit_no_training_3']JÖ
+pkg.torch.onnx.stack_traceÊFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\batchnorm.py", line 194, in forward
     return F.batch_norm(
-≥
+◊
 	getitem_9relu_3node_relu_3"ReluJú
 	namespaceé: __main__.CNN1D/conv_blocks: torch.nn.modules.container.Sequential/conv_blocks.11: torch.nn.modules.activation.ReLU/relu_3: aten.relu.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
 pkg.torch.onnx.fx_noden%relu_3 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_9,), kwargs = {})JM
-pkg.torch.onnx.name_scopes/['', 'conv_blocks', 'conv_blocks.11', 'relu_3']J¯
-pkg.torch.onnx.stack_traceŸFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 69, in forward
-    x = self.conv_blocks(x)
+pkg.torch.onnx.name_scopes/['', 'conv_blocks', 'conv_blocks.11', 'relu_3']Jú
+pkg.torch.onnx.stack_trace˝File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\activation.py", line 143, in forward
     return F.relu(input, inplace=self.inplace)
- 
+ˆ
 relu_3
 val_26	unsqueezenode_unsqueeze"	UnsqueezeJo
 	namespaceb: __main__.CNN1D/gap: torch.nn.modules.pooling.AdaptiveAvgPool1d/unsqueeze: aten.unsqueeze.defaultJ|
 pkg.torch.onnx.class_hierarchyZ['__main__.CNN1D', 'torch.nn.modules.pooling.AdaptiveAvgPool1d', 'aten.unsqueeze.default']Jê
 pkg.torch.onnx.fx_nodev%unsqueeze : [num_users=1] = call_function[target=torch.ops.aten.unsqueeze.default](args = (%relu_3, -2), kwargs = {})J6
-pkg.torch.onnx.name_scopes['', 'gap', 'unsqueeze']J◊
-pkg.torch.onnx.stack_trace∏File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 70, in forward
-    x = self.gap(x)
+pkg.torch.onnx.name_scopes['', 'gap', 'unsqueeze']JÉ
+pkg.torch.onnx.stack_trace‰File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\pooling.py", line 1470, in forward
     return F.adaptive_avg_pool1d(input, self.output_size)
-◊
+É
 	unsqueeze
 val_29mean	node_mean"
 ReduceMean*
@@ -149,37 +149,37 @@ ReduceMean*
 	namespaceT: __main__.CNN1D/gap: torch.nn.modules.pooling.AdaptiveAvgPool1d/mean: aten.mean.dimJs
 pkg.torch.onnx.class_hierarchyQ['__main__.CNN1D', 'torch.nn.modules.pooling.AdaptiveAvgPool1d', 'aten.mean.dim']Jë
 pkg.torch.onnx.fx_nodew%mean : [num_users=1] = call_function[target=torch.ops.aten.mean.dim](args = (%unsqueeze, [-1, -2], True), kwargs = {})J1
-pkg.torch.onnx.name_scopes['', 'gap', 'mean']J◊
-pkg.torch.onnx.stack_trace∏File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 70, in forward
-    x = self.gap(x)
+pkg.torch.onnx.name_scopes['', 'gap', 'mean']JÉ
+pkg.torch.onnx.stack_trace‰File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\pooling.py", line 1470, in forward
     return F.adaptive_avg_pool1d(input, self.output_size)
-®
+‘
 mean
 val_26squeezenode_squeeze"SqueezeJg
 	namespaceZ: __main__.CNN1D/gap: torch.nn.modules.pooling.AdaptiveAvgPool1d/squeeze: aten.squeeze.dimJv
 pkg.torch.onnx.class_hierarchyT['__main__.CNN1D', 'torch.nn.modules.pooling.AdaptiveAvgPool1d', 'aten.squeeze.dim']JÜ
 pkg.torch.onnx.fx_nodel%squeeze : [num_users=1] = call_function[target=torch.ops.aten.squeeze.dim](args = (%mean, -2), kwargs = {})J4
-pkg.torch.onnx.name_scopes['', 'gap', 'squeeze']J◊
-pkg.torch.onnx.stack_trace∏File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 70, in forward
-    x = self.gap(x)
+pkg.torch.onnx.name_scopes['', 'gap', 'squeeze']JÉ
+pkg.torch.onnx.stack_trace‰File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\pooling.py", line 1470, in forward
     return F.adaptive_avg_pool1d(input, self.output_size)
-»
+Ì
 squeeze
 val_33view	node_view"Reshape*
 	allowzero†Jó
 	namespaceâ: __main__.CNN1D/classifier: torch.nn.modules.container.Sequential/classifier.0: torch.nn.modules.flatten.Flatten/view: aten.view.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.flatten.Flatten', 'aten.view.default']Jç
 pkg.torch.onnx.fx_nodes%view : [num_users=1] = call_function[target=torch.ops.aten.view.default](args = (%squeeze, [1, 256]), kwargs = {})JH
-pkg.torch.onnx.name_scopes*['', 'classifier', 'classifier.0', 'view']J˚
-pkg.torch.onnx.stack_trace‹File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 71, in forward
-    x = self.classifier(x)
+pkg.torch.onnx.name_scopes*['', 'classifier', 'classifier.0', 'view']J†
+pkg.torch.onnx.stack_traceÅFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\flatten.py", line 55, in forward
     return input.flatten(self.start_dim, self.end_dim)
-π	
+ﬁ	
 view
 classifier.1.weight
 classifier.1.biaslinearnode_linear"Gemm*
@@ -190,26 +190,26 @@ ReduceMean*
 	namespaceã: __main__.CNN1D/classifier: torch.nn.modules.container.Sequential/classifier.1: torch.nn.modules.linear.Linear/linear: aten.linear.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J≥
 pkg.torch.onnx.fx_nodeò%linear : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%view, %p_classifier_1_weight, %p_classifier_1_bias), kwargs = {})JJ
-pkg.torch.onnx.name_scopes,['', 'classifier', 'classifier.1', 'linear']J˜
-pkg.torch.onnx.stack_traceÿFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 71, in forward
-    x = self.classifier(x)
+pkg.torch.onnx.name_scopes,['', 'classifier', 'classifier.1', 'linear']Jú
+pkg.torch.onnx.stack_trace˝File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
-¶
+À
 linearrelu_4node_relu_4"ReluJô
 	namespaceã: __main__.CNN1D/classifier: torch.nn.modules.container.Sequential/classifier.2: torch.nn.modules.activation.ReLU/relu_4: aten.relu.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÖ
 pkg.torch.onnx.fx_nodek%relu_4 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%linear,), kwargs = {})JJ
-pkg.torch.onnx.name_scopes,['', 'classifier', 'classifier.2', 'relu_4']J˜
-pkg.torch.onnx.stack_traceÿFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 71, in forward
-    x = self.classifier(x)
+pkg.torch.onnx.name_scopes,['', 'classifier', 'classifier.2', 'relu_4']Jú
+pkg.torch.onnx.stack_trace˝File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\activation.py", line 143, in forward
     return F.relu(input, inplace=self.inplace)
-ƒ	
+È	
 relu_4
 classifier.4.weight
 classifier.4.biaslogitsnode_linear_1"Gemm*
@@ -220,41 +220,40 @@ ReduceMean*
 	namespaceç: __main__.CNN1D/classifier: torch.nn.modules.container.Sequential/classifier.4: torch.nn.modules.linear.Linear/linear_1: aten.linear.defaultJñ
 pkg.torch.onnx.class_hierarchyt['__main__.CNN1D', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J∂
 pkg.torch.onnx.fx_nodeõ%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%clone, %p_classifier_4_weight, %p_classifier_4_bias), kwargs = {})JL
-pkg.torch.onnx.name_scopes.['', 'classifier', 'classifier.4', 'linear_1']J˜
-pkg.torch.onnx.stack_traceÿFile "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_models.py", line 71, in forward
-    x = self.classifier(x)
+pkg.torch.onnx.name_scopes.['', 'classifier', 'classifier.4', 'linear_1']Jú
+pkg.torch.onnx.stack_trace˝File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\visualize_width_models.py", line 74, in forward
+    return self.classifier(self.gap(self.conv_blocks(x)))
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\container.py", line 253, in forward
     input = module(input)
   File "C:\Senior Design\Senior Design 2\JapanesePaper2Code\venv\Lib\site-packages\torch\nn\modules\linear.py", line 134, in forward
     return F.linear(input, self.weight, self.bias)
-main_graph*õ Bconv_blocks.0.biasJÄM\9º•i◊ΩW+sºÄªΩT/<Ø€>tÂ¯ºıíQ=ÄˆæF\=èaÈ=86Ω û◊∫y2œª
-«~Ω* Æ< v9c´=‰≈è=AÓ<=hÍÑ=é™ªC#=º¨Ã<Ê$,Ωæ©>´Åó<gkÒ<U£7<ïèM=-ˇ‹º
-<*õ@Bconv_blocks.3.biasJÄÜ.>cbL>[®Ñ>~Ã>7k√æåãúæ$/¶>4))ææz>öãﬁæ§R•æÜ©ë>;ü“æ¸≈ægT¿Ω3“ˆæ0w¶ª–ó±>$™>≠[g>Hû⁄;1†D>|<>¯Ú–;qû	øcOç>t£âæ‡Ä:Ü$^>]F‚>–ﬁπæÃb>’>dAk>xèQ>AU<jp†>§ä>[¿u>€Òp>|ŸÜ;|•S>∆¶å>TÉ8>pç>?ÆŒæxG‹æ:·j>ò>aäh=≥<
->É£ΩæÜ„z>°˝õ>ﬁ
-c=L8v>;úør"é>Ê÷c>î5>ÂìÃæ]¡ö>G©>æä>*TÄBconv_blocks.6.biasj
-locationcnn1d.onnx.dataj
+main_graph*õ Bconv_blocks.0.biasJÄßÈ<⁄=ûâ·<rLæF·ÆΩD∏;=côjΩÙa˜<T=6fï;óÖXºÜ(•<ÍY÷<@)˙<é¥–<™xÀº~d¢<›ìã=-ödΩ?Ù =v»@=ÙD<~¿7=/ZP<7qΩÃ!<Ñ§ªªá;=8ΩÑ;Ø∑
+ΩTÊº†“;ª*õ@Bconv_blocks.3.biasJÄ\Zù>P>ã´È= aà>æ£>ãìΩ,™3>–n©æöùà>g„°>0r(æºóæßÌ=’ﬁÜ>x«ó>‘Å>∞åì>‘Ôç>z
+>_©>ºtØΩ•˛i>Jw´>zÍß>›%±>3€è>8Xí>Uô>l»ñ>Ôî†>È«J>‹ÕÜ>z…Ö>/só>/ﬁH>¥â<>ê&àæqô>∞(>æ£=>ÑC>⁄î>XÇ¶>Ùﬁb>ë~•>LM>®mL>ßÇ´>’6Ü>∆ë>»ì>«}™>ÓÙ =ëÄægu>ˆÍõ>xYwºÀ€∑Ω`tZ>Íâ>∫≥Væﬂ©Ü>?„Ä>‚/é>*ZÄBconv_blocks.6.biasj!
+locationcnn1d_width.onnx.dataj
 offset0j
-length512p*XÄBconv_blocks.9.biasj
-locationcnn1d.onnx.dataj
-offset1024j
-length1024p*ö@Bclassifier.1.biasJÄ†:±º†=wÅ1<ï=‘¬‹<‘^Õ;:ËΩ‰ =–:I;sÜºj<=\ëÁº ¯<Z”è<Õ @Ω˘Ø"Ω-ãL=ÌAâ=á¸º„∂ë<∞ÎOºnêiΩaKÇºW]Ω›ﬂx=rA<º5˝9ŒØíº‚^<Uàx=ÜKb=4ÀhΩ]·^ΩU=&eÍπ·#fΩù8º~à‹ºâe=Çıì=äŒÑ;t&>;•rÍ<8 iΩt±<˙cä<∆Çã=6övΩ¬àΩ8ˇwº†G;lÓ<î”ÊºŒ®=ñˆ97∂•=ß«;∑Ç.=Ä∑:»u•ªH==væ<µÑ˝<*X@Bclassifier.4.weightj
-locationcnn1d.onnx.dataj
+length512p*^ÄBconv_blocks.9.biasj!
+locationcnn1d_width.onnx.dataj
+offset1280j
+length1024p*ö@Bclassifier.1.biasJÄ ¡
+Ω–πwΩÚ’;Ä•aΩN≈+ºñE=dã$ΩêŒº£;~=¯˛≠º/£= Êˇ:…«™;çq>=Qú$ºùR^=	B—º∂	Í;‚#KΩÒ•ºÛ]√<G‰N=àòŸº∏}M=>+Ω]‚ÄΩx¥∑=mG…<x'=&ñT<0ñòªpΩ=•ˆ<b_|ΩÍ;rΩéé¢=4=öûÖΩ˛ú•==çã=ÿ<l5=¸˜ñ=Íª<ÒX∏=ÆåâΩÂtΩäg[=ANcΩ˜¶∞=R:º…nΩ,„sΩ[4Ω…@jº˝©ºj[Jºè‹Ω¶∆Åπ1˜L=ØÈŸºÃ <¸„ =NO¨:*^@Bclassifier.4.weightj!
+locationcnn1d_width.onnx.dataj
 offset512j
-length512p*!Bclassifier.4.biasJ3Î]<5„ Ω*] @Bconv_blocks.0.weightj
-locationcnn1d.onnx.dataj
-offset2048j
-length8192p*`@  Bconv_blocks.3.weightj
-locationcnn1d.onnx.dataj
-offset75776j
-length262144p*bÄ@Bconv_blocks.6.weightj
-locationcnn1d.onnx.dataj
-offset337920j
-length524288p*dÄÄBconv_blocks.9.weightj
-locationcnn1d.onnx.dataj
-offset862208j
-length1048576p*]@ÄBclassifier.1.weightj
-locationcnn1d.onnx.dataj
-offset10240j
+length768p*%Bclassifier.4.biasJ=ıΩÉñ Ω≥ò¶=*c @Bconv_blocks.0.weightj!
+locationcnn1d_width.onnx.dataj
+offset2304j
+length8192p*f@  Bconv_blocks.3.weightj!
+locationcnn1d_width.onnx.dataj
+offset76032j
+length262144p*hÄ@Bconv_blocks.6.weightj!
+locationcnn1d_width.onnx.dataj
+offset338176j
+length524288p*jÄÄBconv_blocks.9.weightj!
+locationcnn1d_width.onnx.dataj
+offset862464j
+length1048576p*c@ÄBclassifier.1.weightj!
+locationcnn1d_width.onnx.dataj
+offset10496j
 length65536p*Bval_29Jˇˇˇˇˇˇˇˇ˛ˇˇˇˇˇˇˇ*Bval_33J              *Bval_26J˛ˇˇˇˇˇˇˇZ¬
 input
 
@@ -268,7 +267,7 @@ USER_INPUT"=
 logits
 
 
-"?
+"?
 0pkg.torch.export.graph_signature.OutputSpec.kindUSER_OUTPUT"-
 !pkg.torch.onnx.original_node_namelinear_1j 
 conv_blocks.0.bias
@@ -294,7 +293,7 @@ USER_INPUT"=
 !pkg.torch.onnx.original_node_namep_classifier_1_biasjﬁ
 classifier.4.weight
 
-
+
 @"<
 /pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
 5pkg.torch.export.graph_signature.InputSpec.persistentNone":
@@ -302,7 +301,7 @@ USER_INPUT"=
 classifier.4.bias
 
 
-"<
+"<
 /pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
 5pkg.torch.export.graph_signature.InputSpec.persistentNone"8
 !pkg.torch.onnx.original_node_namep_classifier_4_biasj*

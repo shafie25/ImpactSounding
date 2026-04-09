@@ -1,0 +1,11 @@
+{
+  "model": "XGBoost",
+  "task": "CrackWidth",
+  "test_accuracy": 0.4183,
+  "test_f1_macro": 0.3819,
+  "test_f1_02mm": 0.6898,
+  "test_f1_04mm": 0.4213,
+  "test_f1_06mm": 0.0346,
+  "cv_accuracy": 0.9967,
+  "cv_f1_macro": 0.9967
+}

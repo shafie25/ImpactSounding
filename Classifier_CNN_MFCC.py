@@ -44,7 +44,7 @@ from tqdm import tqdm
 # ============================================================
 
 IMAGE_DIR      = "MFCC_Images"
-OUTPUT_DIR     = os.path.join("Classifier Results", "CNN_MFCC")
+OUTPUT_DIR     = os.path.join("Classifier Results", "CrackDetection", "CNN_MFCC")
 RANDOM_STATE   = 42
 
 EXTRACT_BATCH  = 64       # batch size for one-time feature extraction

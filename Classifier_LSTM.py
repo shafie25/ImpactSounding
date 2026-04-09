@@ -1,15 +1,24 @@
 # ============================================================
-# Classifier 5 — 1D CNN on Raw Waveform
+# Classifier — LSTM on MFCC Frame Sequences
 # Acoustic Impact Hammer Testing: Cracked vs Intact
 #
-# Loads raw WAV files directly from Specimens/Class_sounds/.
-# No feature engineering — the network learns its own filters
-# from the raw audio samples end-to-end.
+# Instead of collapsing MFCCs to mean/std statistics, each WAV
+# is treated as a time sequence of MFCC frames:
+#   shape (T=9, 13)  — 9 frames × 13 coefficients
 #
-# Architecture: 4x Conv1d blocks (increasing channels, stride-
-# based downsampling) → GlobalAveragePooling → MLP head.
+# hop_length=512 (librosa default) on 4410 samples gives exactly
+# T = 1 + 4410 // 512 = 9 frames per file (no padding needed).
 #
-# Output: Classifier Results/CNN_1D/
+# The LSTM captures temporal dynamics — how spectral content
+# evolves from hammer impact through resonance to decay —
+# which the tabular mean/std features discard.
+#
+# Architecture:
+#   LSTM(13 → 64, 2 layers, dropout=0.3)
+#   → last hidden state (64,)
+#   → Linear(64→32) → ReLU → Dropout → Linear(32→2)
+#
+# Output: Classifier Results/LSTM/
 # ============================================================
 
 import os
@@ -33,30 +42,34 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report
 )
-from tqdm import tqdm
 
 
 # ============================================================
 # PARAMETERS
 # ============================================================
 
-DATA_DIR       = os.path.join("Specimens", "Class_sounds")
-OUTPUT_DIR     = os.path.join("Classifier Results", "CrackDetection", "CNN_1D")
-RANDOM_STATE   = 42
+DATA_DIR      = os.path.join("Specimens", "Class_sounds")
+OUTPUT_DIR    = os.path.join("Classifier Results", "CrackDetection", "LSTM")
+RANDOM_STATE  = 42
 
-SAMPLE_RATE    = 22050
-NUM_SAMPLES    = 4410          # exactly 0.20s at 22050 Hz
+SAMPLE_RATE   = 22050
+NUM_SAMPLES   = 4410        # 0.20s at 22050 Hz
+N_MFCC        = 13
+HOP_LENGTH    = 512         # default librosa hop → T = 9 frames
+N_FFT         = 2048        # default librosa n_fft
+SEQ_LEN       = 1 + NUM_SAMPLES // HOP_LENGTH   # = 9
 
-BATCH_SIZE     = 64
-NUM_EPOCHS     = 50
-LEARNING_RATE  = 1e-3
-DROPOUT        = 0.3
+HIDDEN_SIZE   = 64
+NUM_LAYERS    = 2
+DROPOUT       = 0.3
+BATCH_SIZE    = 64
+NUM_EPOCHS    = 50
+LEARNING_RATE = 1e-3
 
 # Class weights for imbalance (Cracked=1800, Intact=8236, N=10036)
-# weight[c] = N / (2 * n_c)
-N_CRACKED      = 1800
-N_INTACT       = 8236
-N_TOTAL        = N_CRACKED + N_INTACT
+N_CRACKED     = 1800
+N_INTACT      = 8236
+N_TOTAL       = N_CRACKED + N_INTACT
 WEIGHT_CRACKED = N_TOTAL / (2 * N_CRACKED)   # ~2.788
 WEIGHT_INTACT  = N_TOTAL / (2 * N_INTACT)    # ~0.609
 
@@ -64,38 +77,58 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 # ============================================================
-# DATA LOADING
+# DATA LOADING — extract MFCC sequences
 # ============================================================
 
 def load_dataset(data_dir):
     """
     Walk Class_sounds/Cracked/ and Class_sounds/Intact/,
-    load each WAV as a raw numpy array, pad/truncate to NUM_SAMPLES.
-    Returns arrays X (N, NUM_SAMPLES) and y (N,) with 0=Cracked, 1=Intact.
+    load each WAV, pad/truncate to NUM_SAMPLES, then compute
+    MFCC sequence with hop_length=HOP_LENGTH.
+
+    Returns:
+      X : (N, SEQ_LEN, N_MFCC) float32 — MFCC frame sequences
+      y : (N,) int64             — 0=Cracked, 1=Intact
     """
-    X, y, paths = [], [], []
+    X, y = [], []
     for label_name, label_idx in [("Cracked", 0), ("Intact", 1)]:
         folder = os.path.join(data_dir, label_name)
         for root, _, files in os.walk(folder):
-            wav_files = [f for f in files if f.lower().endswith(".wav")]
-            for fname in wav_files:
+            for fname in files:
+                if not fname.lower().endswith(".wav"):
+                    continue
                 fpath = os.path.join(root, fname)
                 try:
                     audio, _ = librosa.load(fpath, sr=SAMPLE_RATE, mono=True)
-                    # Pad or truncate to exactly NUM_SAMPLES
                     if len(audio) < NUM_SAMPLES:
                         audio = np.pad(audio, (0, NUM_SAMPLES - len(audio)))
                     else:
                         audio = audio[:NUM_SAMPLES]
-                    X.append(audio)
+
+                    # mfcc returns (N_MFCC, T) — transpose to (T, N_MFCC)
+                    mfcc = librosa.feature.mfcc(
+                        y=audio, sr=SAMPLE_RATE,
+                        n_mfcc=N_MFCC,
+                        hop_length=HOP_LENGTH,
+                        n_fft=N_FFT,
+                    )                          # (13, T)
+                    mfcc = mfcc.T              # (T, 13)
+
+                    # All files produce exactly SEQ_LEN frames; safety clip
+                    mfcc = mfcc[:SEQ_LEN]
+                    if mfcc.shape[0] < SEQ_LEN:
+                        pad = np.zeros((SEQ_LEN - mfcc.shape[0], N_MFCC), dtype=np.float32)
+                        mfcc = np.vstack([mfcc, pad])
+
+                    X.append(mfcc.astype(np.float32))
                     y.append(label_idx)
-                    paths.append(fpath)
                 except Exception as e:
                     print(f"  Warning: could not load {fpath}: {e}")
 
-    X = np.array(X, dtype=np.float32)   # (N, 4410)
-    y = np.array(y, dtype=np.int64)     # (N,)
+    X = np.array(X, dtype=np.float32)   # (N, SEQ_LEN, N_MFCC)
+    y = np.array(y, dtype=np.int64)
     print(f"Loaded {len(y)} files — Cracked: {(y==0).sum()}, Intact: {(y==1).sum()}")
+    print(f"MFCC sequence shape per sample: ({SEQ_LEN}, {N_MFCC})")
     return X, y
 
 
@@ -103,17 +136,15 @@ def load_dataset(data_dir):
 # DATASET WITH AUGMENTATION
 # ============================================================
 
-class WaveformDataset(Dataset):
+class MFCCDataset(Dataset):
     """
-    PyTorch Dataset wrapping (N, 4410) waveform arrays.
-    When augment=True applies:
-      - Gaussian noise (SNR ~40dB, small perturbation)
-      - Random time shift (up to ±5% = ±220 samples, circular)
-    These mimic natural variation in hammer strike timing and
-    microphone placement without changing the acoustic class.
+    Wraps (N, T, 13) MFCC arrays.
+    When augment=True (training only):
+      - Gaussian noise on MFCC values (std = 0.5% of feature std)
+      - Time masking: randomly zero 1 consecutive frame
     """
     def __init__(self, X, y, augment=False):
-        self.X = torch.tensor(X, dtype=torch.float32)   # (N, 4410)
+        self.X = torch.tensor(X, dtype=torch.float32)   # (N, T, 13)
         self.y = torch.tensor(y, dtype=torch.long)
         self.augment = augment
 
@@ -121,78 +152,63 @@ class WaveformDataset(Dataset):
         return len(self.y)
 
     def __getitem__(self, idx):
-        x = self.X[idx].clone()    # (4410,)
+        x = self.X[idx].clone()   # (T, 13)
 
         if self.augment:
-            # Gaussian noise: std = 0.005 × signal std
-            noise = torch.randn_like(x) * (x.std() * 0.005)
+            # Small MFCC noise
+            noise = torch.randn_like(x) * (x.std() * 0.005 + 1e-6)
             x = x + noise
 
-            # Random circular time shift: ±5% of signal length
-            max_shift = int(0.05 * NUM_SAMPLES)
-            shift = torch.randint(-max_shift, max_shift + 1, (1,)).item()
-            x = torch.roll(x, shift)
+            # Randomly mask 1 time step
+            mask_t = torch.randint(0, SEQ_LEN, (1,)).item()
+            x[mask_t] = 0.0
 
-        x = x.unsqueeze(0)   # (1, 4410) — channel dimension for Conv1d
         return x, self.y[idx]
 
 
 # ============================================================
-# 1D CNN MODEL
+# LSTM MODEL
 # ============================================================
 
-class CNN1D(nn.Module):
+class LSTMClassifier(nn.Module):
     """
-    Four convolutional blocks with increasing channel depth and
-    stride-based spatial downsampling, followed by global average
-    pooling and a two-layer MLP classifier head.
+    Two-layer LSTM followed by a small MLP head.
 
-    Input:  (B, 1, 4410)
-    Output: (B, 2) logits
+    Input:  (B, T=9, 13)   — batch of MFCC sequences
+    Output: (B, 2)          — logits for [Cracked, Intact]
 
-    Conv block structure:
-        Conv1d → BatchNorm1d → ReLU
-
-    Receptive field grows with each layer: the first layer uses
-    a large kernel (64) to capture multi-millisecond patterns
-    (e.g., attack transient), later layers use smaller kernels
-    to refine those representations.
+    The last hidden state of the top LSTM layer is used as the
+    sequence summary (not mean-pooling) because the end of the
+    signal (decay) is most discriminative between crack states.
     """
-    def __init__(self, dropout=DROPOUT):
+    def __init__(self, input_size=N_MFCC, hidden_size=HIDDEN_SIZE,
+                 num_layers=NUM_LAYERS, dropout=DROPOUT):
         super().__init__()
 
-        self.conv_blocks = nn.Sequential(
-            # Block 1: capture broad temporal patterns (64 samples ~ 3ms)
-            nn.Conv1d(1,   32,  kernel_size=64, stride=4, padding=32), nn.BatchNorm1d(32),  nn.ReLU(),
-            # Block 2: mid-level features
-            nn.Conv1d(32,  64,  kernel_size=32, stride=2, padding=16), nn.BatchNorm1d(64),  nn.ReLU(),
-            # Block 3: higher-level features
-            nn.Conv1d(64,  128, kernel_size=16, stride=2, padding=8),  nn.BatchNorm1d(128), nn.ReLU(),
-            # Block 4: abstract representations
-            nn.Conv1d(128, 256, kernel_size=8,  stride=2, padding=4),  nn.BatchNorm1d(256), nn.ReLU(),
+        self.lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0.0,
         )
 
-        # Global average pooling collapses the time dimension to a single
-        # vector per sample — robust to slight length variations
-        self.gap = nn.AdaptiveAvgPool1d(1)   # (B, 256, T) → (B, 256, 1)
-
-        self.classifier = nn.Sequential(
-            nn.Flatten(),           # (B, 256)
-            nn.Linear(256, 64),
+        self.head = nn.Sequential(
+            nn.Linear(hidden_size, 32),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(64, 2),
+            nn.Linear(32, 2),
         )
 
     def forward(self, x):
-        x = self.conv_blocks(x)
-        x = self.gap(x)
-        x = self.classifier(x)
-        return x
+        # x: (B, T, 13)
+        _, (h_n, _) = self.lstm(x)   # h_n: (num_layers, B, hidden)
+        last_hidden = h_n[-1]         # top layer: (B, hidden)
+        return self.head(last_hidden)
 
 
 # ============================================================
-# TRAINING LOOP
+# TRAINING / EVALUATION
 # ============================================================
 
 def train_one_epoch(model, loader, optimizer, criterion, device):
@@ -239,13 +255,13 @@ def main():
     print(f"PyTorch: {torch.__version__}")
 
     # ----------------------------------------------------------
-    # 1. Load data
+    # 1. Load and extract MFCC sequences
     # ----------------------------------------------------------
-    print("\n--- Loading WAV files ---")
+    print("\n--- Loading WAV files and extracting MFCC sequences ---")
     X, y = load_dataset(DATA_DIR)
 
     # ----------------------------------------------------------
-    # 2. Stratified 80/20 split, then carve 10% of train as val
+    # 2. Stratified 80/10/10 split
     # ----------------------------------------------------------
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE
@@ -253,7 +269,8 @@ def main():
     X_train, X_val, y_train, y_val = train_test_split(
         X_train, y_train, test_size=0.125, stratify=y_train, random_state=RANDOM_STATE
     )
-    # 0.125 of 0.80 = 0.10 of total → 80/10/10 split
+    # 0.125 of 0.80 = 0.10 of total → 80/10/10
+
     print(f"Split: train={len(y_train)}, val={len(y_val)}, test={len(y_test)}")
     print(f"  Train — Cracked: {(y_train==0).sum()}, Intact: {(y_train==1).sum()}")
     print(f"  Val   — Cracked: {(y_val==0).sum()},   Intact: {(y_val==1).sum()}")
@@ -262,9 +279,9 @@ def main():
     # ----------------------------------------------------------
     # 3. Datasets & DataLoaders
     # ----------------------------------------------------------
-    train_ds = WaveformDataset(X_train, y_train, augment=True)
-    val_ds   = WaveformDataset(X_val,   y_val,   augment=False)
-    test_ds  = WaveformDataset(X_test,  y_test,  augment=False)
+    train_ds = MFCCDataset(X_train, y_train, augment=True)
+    val_ds   = MFCCDataset(X_val,   y_val,   augment=False)
+    test_ds  = MFCCDataset(X_test,  y_test,  augment=False)
 
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
     val_loader   = DataLoader(val_ds,   batch_size=BATCH_SIZE, shuffle=False)
@@ -273,9 +290,10 @@ def main():
     # ----------------------------------------------------------
     # 4. Model, loss, optimizer, scheduler
     # ----------------------------------------------------------
-    model = CNN1D().to(device)
+    model = LSTMClassifier().to(device)
     total_params = sum(p.numel() for p in model.parameters())
     print(f"\nModel parameters: {total_params:,}")
+    print(f"LSTM: {NUM_LAYERS} layers, hidden={HIDDEN_SIZE}, input={N_MFCC}, seq_len={SEQ_LEN}")
 
     class_weights = torch.tensor(
         [WEIGHT_CRACKED, WEIGHT_INTACT], dtype=torch.float32
@@ -288,7 +306,7 @@ def main():
     )
 
     # ----------------------------------------------------------
-    # 5. Training loop
+    # 5. Training loop — checkpoint by best val F1 (Cracked)
     # ----------------------------------------------------------
     print("\n--- Training ---")
     history = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
@@ -324,8 +342,9 @@ def main():
     # ----------------------------------------------------------
     # 6. Test evaluation (best checkpoint)
     # ----------------------------------------------------------
-    model.load_state_dict(torch.load(os.path.join(OUTPUT_DIR, "best_model.pt")))
-    _, test_acc_raw, test_preds, test_labels = evaluate(model, test_loader, criterion, device)
+    model.load_state_dict(torch.load(os.path.join(OUTPUT_DIR, "best_model.pt"),
+                                     map_location=device))
+    _, _, test_preds, test_labels = evaluate(model, test_loader, criterion, device)
 
     test_acc  = accuracy_score(test_labels, test_preds)
     test_prec = precision_score(test_labels, test_preds, pos_label=0, zero_division=0)
@@ -341,8 +360,7 @@ def main():
     print(classification_report(test_labels, test_preds,
                                 target_names=["Cracked", "Intact"]))
 
-    # Best val metrics (for Classifier_Comparison.py)
-    # Re-evaluate at best epoch (model already loaded)
+    # Val metrics at best checkpoint (used as cv_* in Classifier_Comparison)
     _, _, val_preds_best, val_labels_best = evaluate(model, val_loader, criterion, device)
     cv_acc  = accuracy_score(val_labels_best, val_preds_best)
     cv_prec = precision_score(val_labels_best, val_preds_best, pos_label=0, zero_division=0)
@@ -353,7 +371,7 @@ def main():
     # 7. Save metrics.json
     # ----------------------------------------------------------
     metrics = {
-        "model":          "CNN_1D",
+        "model":          "LSTM",
         "test_accuracy":  round(test_acc,  4),
         "test_precision": round(test_prec, 4),
         "test_recall":    round(test_rec,  4),
@@ -367,7 +385,7 @@ def main():
     }
     with open(os.path.join(OUTPUT_DIR, "metrics.json"), "w") as f:
         json.dump(metrics, f, indent=2)
-    print(f"Saved metrics.json")
+    print("Saved metrics.json")
 
     # ----------------------------------------------------------
     # 8. Confusion matrix
@@ -379,7 +397,7 @@ def main():
                 yticklabels=["Cracked", "Intact"], ax=ax)
     ax.set_xlabel("Predicted")
     ax.set_ylabel("Actual")
-    ax.set_title(f"1D CNN — Confusion Matrix\n"
+    ax.set_title(f"LSTM — Confusion Matrix\n"
                  f"Acc={test_acc:.4f}  Prec={test_prec:.4f}  "
                  f"Rec={test_rec:.4f}  F1={test_f1:.4f}")
     plt.tight_layout()
@@ -395,7 +413,8 @@ def main():
 
     axes[0].plot(epochs, history["train_loss"], label="Train Loss")
     axes[0].plot(epochs, history["val_loss"],   label="Val Loss")
-    axes[0].axvline(best_epoch, color="red", linestyle="--", linewidth=0.8, label=f"Best epoch {best_epoch}")
+    axes[0].axvline(best_epoch, color="red", linestyle="--", linewidth=0.8,
+                    label=f"Best epoch {best_epoch}")
     axes[0].set_xlabel("Epoch")
     axes[0].set_ylabel("Loss")
     axes[0].set_title("Training & Validation Loss")
@@ -403,13 +422,14 @@ def main():
 
     axes[1].plot(epochs, history["train_acc"], label="Train Acc")
     axes[1].plot(epochs, history["val_acc"],   label="Val Acc")
-    axes[1].axvline(best_epoch, color="red", linestyle="--", linewidth=0.8, label=f"Best epoch {best_epoch}")
+    axes[1].axvline(best_epoch, color="red", linestyle="--", linewidth=0.8,
+                    label=f"Best epoch {best_epoch}")
     axes[1].set_xlabel("Epoch")
     axes[1].set_ylabel("Accuracy")
     axes[1].set_title("Training & Validation Accuracy")
     axes[1].legend()
 
-    plt.suptitle("1D CNN on Raw Waveform — Training Curves")
+    plt.suptitle("LSTM on MFCC Sequences — Training Curves")
     plt.tight_layout()
     plt.savefig(os.path.join(OUTPUT_DIR, "training_curves.png"), dpi=150)
     plt.close()

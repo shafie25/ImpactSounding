@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-RESULTS_ROOT = "Classifier Results"
-CLASSIFIERS  = ["RandomForest", "XGBoost", "SVM", "CNN_MFCC", "CNN_1D"]
+RESULTS_ROOT = os.path.join("Classifier Results", "CrackDetection")
+CLASSIFIERS  = ["RandomForest", "XGBoost", "SVM", "CNN_MFCC", "CNN_1D", "LSTM", "MLP"]
 OUTPUT_DIR   = os.path.join(RESULTS_ROOT, "Comparison")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -56,7 +56,7 @@ metric_labels = ["Accuracy", "Precision\n(Cracked)", "Recall\n(Cracked)", "F1\n(
 n_clf  = len(df)
 x      = np.arange(len(metric_labels))
 width  = 0.8 / n_clf
-colors = ["steelblue", "darkorange", "seagreen", "crimson", "mediumpurple"]
+colors = ["steelblue", "darkorange", "seagreen", "crimson", "mediumpurple", "saddlebrown", "teal"]
 
 fig, ax = plt.subplots(figsize=(13, 6))
 for i, (clf_name, color) in enumerate(zip(df.index, colors)):

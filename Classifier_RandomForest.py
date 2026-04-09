@@ -26,7 +26,7 @@ from sklearn.metrics import (
 )
 
 FEATURES_FILE = "Labeled_Features.xlsx"
-OUTPUT_DIR    = os.path.join("Classifier Results", "RandomForest")
+OUTPUT_DIR    = os.path.join("Classifier Results", "CrackDetection", "RandomForest")
 RANDOM_STATE  = 42
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)

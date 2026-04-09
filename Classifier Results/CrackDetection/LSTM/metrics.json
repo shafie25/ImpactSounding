@@ -1,0 +1,13 @@
+{
+  "model": "LSTM",
+  "test_accuracy": 0.992,
+  "test_precision": 0.9725,
+  "test_recall": 0.9833,
+  "test_f1": 0.9779,
+  "cv_accuracy": 0.995,
+  "cv_precision": 0.9781,
+  "cv_recall": 0.9944,
+  "cv_f1": 0.9862,
+  "best_epoch": 37,
+  "best_val_f1": 0.9862
+}

@@ -86,7 +86,7 @@ Specimens/Class_sounds/
   [Classifiers]                  <- our scripts
         |
   Classifier Results/
-  Random Forest | XGBoost | SVM
+  RandomForest | XGBoost | SVM | CNN_MFCC | CNN_1D | LSTM | MLP
 ```
 
 ---
@@ -96,13 +96,24 @@ Specimens/Class_sounds/
 ```
 JapanesePaper2Code/
 ├── Classifier Results/
-│   ├── CNN_1D/                  best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
-│   ├── CNN_MFCC/                best_head.pt, metrics.json, confusion_matrix.png, training_curves.png
-│   ├── Comparison/              side-by-side bar charts across all classifiers
-│   ├── RandomForest/            metrics.json, confusion_matrix.png, feature_importances.png
-│   ├── SVM/                     metrics.json, confusion_matrix.png
-│   ├── Visualization/           torchinfo summaries, ONNX exports, Grad-CAM heatmaps
-│   └── XGBoost/                 metrics.json, confusion_matrix.png, feature_importances.png
+│   ├── CrackDetection/          Level 1 — Cracked vs Intact
+│   │   ├── RandomForest/        metrics.json, confusion_matrix.png, feature_importances.png
+│   │   ├── XGBoost/             metrics.json, confusion_matrix.png, feature_importances.png
+│   │   ├── SVM/                 metrics.json, confusion_matrix.png
+│   │   ├── CNN_MFCC/            best_head.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   │   ├── CNN_1D/              best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   │   ├── LSTM/                best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   │   ├── MLP/                 best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   │   ├── Comparison/          side-by-side bar charts across all classifiers
+│   │   └── Visualization/       torchinfo summaries, ONNX exports, Grad-CAM heatmaps
+│   ├── CrackWidth/              Level 2a — 0.2 / 0.4 / 0.6 mm
+│   │   ├── RandomForest/        metrics.json, confusion_matrix.png, cv_scores.png
+│   │   ├── XGBoost/             metrics.json, confusion_matrix.png, cv_scores.png
+│   │   ├── SVM/                 metrics.json, confusion_matrix.png, cv_scores.png
+│   │   ├── MLP/                 best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   │   ├── CNN_1D/              best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   │   └── Visualization/       torchinfo summaries, ONNX exports, Grad-CAM heatmaps (CNN_1D + MLP)
+│   └── CrackDepth/              Level 2b — 20 mm / 40 mm (planned)
 ├── MFCC_Images/
 │   ├── Cracked/                 1,800 × 224×224px MFCC spectrogram images
 │   └── Intact/                  8,236 × 224×224px MFCC spectrogram images
@@ -113,16 +124,22 @@ JapanesePaper2Code/
 │   │   ├── Cracked/             1,800 labeled WAV files (9 subfolders by specimen + position)
 │   │   └── Intact/              8,236 labeled WAV files (6 subfolders by specimen)
 │   └── Split_sounds/            impacts organized per specimen and position
-├── Classifier_1DCNN.py          1D CNN on raw waveforms
-├── Classifier_CNN_MFCC.py       EfficientNet-B0 on MFCC spectrogram images
+├── Classifier_1DCNN.py          Level 1: 1D CNN on raw waveforms (crack detection)
+├── Classifier_CNN_MFCC.py       Level 1: EfficientNet-B0 on MFCC spectrogram images
 ├── Classifier_Comparison.py     loads all metrics.json files and plots comparisons
-├── Classifier_RandomForest.py   Random Forest on tabular features
-├── Classifier_SVM.py            SVM on tabular features
-├── Classifier_XGBoost.py        XGBoost on tabular features
+├── Classifier_LSTM.py           Level 1: LSTM on MFCC frame sequences
+├── Classifier_MLP.py            Level 1: MLP on tabular features
+├── Classifier_RandomForest.py   Level 1: Random Forest on tabular features
+├── Classifier_SVM.py            Level 1: SVM on tabular features
+├── Classifier_XGBoost.py        Level 1: XGBoost on tabular features
+├── Classifier_Width_Tabular.py  Level 2a: RF + XGBoost + SVM for crack width (specimen-level split)
+├── Classifier_Width_MLP.py      Level 2a: MLP for crack width (specimen-level split)
+├── Classifier_Width_1DCNN.py    Level 2a: 1D CNN for crack width (specimen-level split)
 ├── Labeled Feature Extraction.py  extracts Df, Vf, MFCC stats for all 10,036 WAVs
 ├── Labeled_Features.xlsx        10,036 rows × 33 columns feature table
 ├── MFCC_Image_Generator.py      converts each WAV to a 224×224 MFCC image
-├── visualize_models.py          torchinfo summaries, ONNX exports, Grad-CAM heatmaps
+├── visualize_models.py          Level 1: torchinfo summaries, ONNX exports, Grad-CAM heatmaps
+├── visualize_width_models.py    Level 2a: torchinfo summaries, ONNX exports, Grad-CAM heatmaps
 ├── JapanesePaper.pdf
 ├── README.md
 └── TECHNICAL_NOTES.md
@@ -219,17 +236,34 @@ Trains a **1D CNN** directly on raw audio waveforms — no feature engineering. 
 
 ---
 
+### `Classifier_LSTM.py`
+Trains a **2-layer LSTM** on MFCC frame sequences. Each WAV is converted to a sequence of 9 MFCC frames (T=9, 13 coefficients per frame) using `hop_length=512` — the default librosa hop on 4,410 samples gives exactly 9 frames. Unlike the tabular classifiers which collapse MFCCs to mean/std statistics, the LSTM processes each frame in order and captures how spectral content evolves from impact through resonance to decay.
+
+- **Architecture:** `LSTM(13→64, 2 layers, dropout=0.3)` → last hidden state → `Linear(64→32) → ReLU → Dropout → Linear(32→2)`. ~55K parameters.
+- **Augmentation:** Gaussian noise on MFCC values + random time masking (1 frame zeroed per sample, training only).
+- **Split:** 80/10/10 stratified. **Class weighting:** same as 1D CNN (Cracked=2.788, Intact=0.609). Best weights saved to `Classifier Results/LSTM/best_model.pt`.
+
+---
+
+### `Classifier_MLP.py`
+Trains a **2-hidden-layer MLP** on the same 29 tabular features as SVM/XGBoost/RF. This is the fairest NN vs. classical comparison: identical features, different learner. Features are StandardScaler-normalized before training (MLPs are scale-sensitive; tree models are not).
+
+- **Architecture:** `Linear(29→128) → BN → ReLU → Dropout(0.3) → Linear(128→64) → BN → ReLU → Dropout(0.3) → Linear(64→2)`. ~12K parameters.
+- **Split:** 80/10/10 stratified. **Class weighting:** same as other NNs (Cracked=2.788, Intact=0.609). Best weights saved to `Classifier Results/MLP/best_model.pt`.
+
+---
+
 ### `Classifier_Comparison.py`
-Loads `metrics.json` from each classifier's output folder and produces side-by-side comparison plots in `Classifier Results/Comparison/`. **Run after all five classifiers.**
+Loads `metrics.json` from each classifier's output folder and produces side-by-side comparison plots in `Classifier Results/Comparison/`. **Run after all seven classifiers.**
 
 ---
 
 ### `visualize_models.py`
 Loads the trained `.pt` model weights and produces three types of visualization in `Classifier Results/Visualization/`:
 
-1. **Architecture summaries** (`cnn1d_summary.txt`, `cnn_mfcc_head_summary.txt`) — layer-by-layer breakdown showing input/output shapes and parameter counts per layer, generated with `torchinfo`.
+1. **Architecture summaries** (`cnn1d_summary.txt`, `cnn_mfcc_head_summary.txt`, `lstm_summary.txt`, `mlp_summary.txt`) — layer-by-layer breakdown showing input/output shapes and parameter counts per layer, generated with `torchinfo`.
 
-2. **ONNX exports** (`cnn1d.onnx`, `cnn_mfcc_head.onnx`) — drag either file into [netron.app](https://netron.app) for an interactive visual graph of the architecture.
+2. **ONNX exports** (`cnn1d.onnx`, `cnn_mfcc_head.onnx`, `lstm.onnx`, `mlp.onnx`) — drag any file into [netron.app](https://netron.app) for an interactive visual graph of the architecture.
 
 3. **Grad-CAM heatmaps** (`gradcam_cracked_sample1-3.png`, `gradcam_intact_sample1-3.png`) — for the 1D CNN only. Each plot overlays a color heatmap on the raw waveform showing which milliseconds of the impact sound the model focused on when making its prediction. Red/warm = high importance, blue/cool = low importance. Three samples per class are generated to check consistency across different recordings.
 
@@ -239,12 +273,12 @@ Loads the trained `.pt` model weights and produces three types of visualization 
 
 ## Our Results vs. Paper (Crack Detection)
 
-| | Paper SVM | Our SVM | Our XGBoost | Our Random Forest | Our MFCC CNN | Our 1D CNN |
-|---|---|---|---|---|---|---|
-| Accuracy | 97.59% | 99.70% | 99.25% | 98.51% | 92.33% | **99.75%** |
-| Precision (Cracked) | 97.95% | 99.17% | **99.43%** | 97.97% | 74.41% | 99.17% |
-| Recall (Cracked) | 97.22% | 99.17% | 96.39% | 93.61% | 87.22% | **99.44%** |
-| F1 (Cracked) | 97.58% | 99.17% | 97.88% | 95.74% | 80.31% | **99.31%** |
+| | Paper SVM | Our SVM | Our XGBoost | Our RF | Our MFCC CNN | Our 1D CNN | Our LSTM | Our MLP |
+|---|---|---|---|---|---|---|---|---|
+| Accuracy | 97.59% | 99.70% | 99.25% | 98.51% | 92.33% | **99.75%** | 99.20% | 99.60% |
+| Precision (Cracked) | 97.95% | 99.17% | **99.43%** | 97.97% | 74.41% | 99.17% | 97.25% | 98.89% |
+| Recall (Cracked) | 97.22% | 99.17% | 96.39% | 93.61% | 87.22% | **99.44%** | 98.33% | 98.89% |
+| F1 (Cracked) | 97.58% | 99.17% | 97.88% | 95.74% | 80.31% | **99.31%** | 97.79% | 98.89% |
 
 **Our 1D CNN is the best overall model**, edging out the SVM on accuracy, recall, and F1 — with zero hand-crafted features. Caveats vs. the paper:
 - Paper used 70/30 split; we used 80/20 (more training data = slight advantage)
@@ -264,7 +298,7 @@ Loads the trained `.pt` model weights and produces three types of visualization 
 
 **Class imbalance:** Cracked (1,800) vs Intact (8,236) — ~4.6x ratio. Handled via `class_weight=balanced` (RF, SVM), `scale_pos_weight=4.58` (XGBoost), and weighted `CrossEntropyLoss` (CNNs).
 
-### Best Classifier Per Metric (our models)
+### Best Classifier Per Metric (our models, all 7)
 
 | Metric | Winner | Score |
 |--------|--------|-------|
@@ -295,16 +329,38 @@ The 1D CNN trained directly on raw waveforms achieved **99.75% accuracy, 99.31% 
 
 ---
 
+## Level 2a — Crack Width Classification Results
+
+**Dataset:** 1,800 cracked WAV files across 3 width classes (600 per class). 9 specimen/position folders total.
+
+**Critical finding — data leakage with random splits:** With a standard random 80/20 train/test split, all models achieve ~99-100% accuracy because each specimen contributes ~200 nearly-identical recordings. When recordings from the same specimen appear in both train and test, the model learns to recognize the *specimen's acoustic fingerprint* rather than the physics of crack width. This produces inflated metrics that do not reflect real-world generalization ability.
+
+**Specimen-level split (correct methodology):** Series 1 specimens (`specimen_1_X`, both C02 and C04 positions, 400 recordings/class) → train. Series 2 specimens (`specimen_2_X`, C02 only, 200 recordings/class) → test. The two series are physically different concrete specimens — the model must generalize to a specimen it has never seen.
+
+### Results with Specimen-Level Split
+
+| Model | Test Accuracy | Test Macro F1 | CV Accuracy (within series 1) | CV Macro F1 |
+|-------|--------------|---------------|-------------------------------|-------------|
+| Random Forest | 34.5% | 35.1% | 99.75% | 99.75% |
+| XGBoost | 41.8% | 38.2% | 99.67% | 99.67% |
+| SVM | 33.5% | 17.0% | 99.83% | 99.83% |
+| MLP | 33.2% | 19.2% | ~99% (val F1=1.00) | — |
+
+The stark contrast between CV (within series 1, ~99%) and test (series 2, 33-42%) confirms that the models are memorizing specimen-specific acoustic signatures rather than learning generalizable width features. The 33% test accuracy is near random chance (33.3% for a 3-class problem), meaning the models learn nothing that transfers to an unseen specimen.
+
+**Interpretation:** Crack width may be fundamentally difficult to distinguish from acoustic features alone when only 2 physical specimens (one per series) are available per width class. The tabular features (Df, Vf, MFCC statistics) that work well for crack *detection* (Cracked vs Intact, 9 distinct specimens) do not generalize for crack *width* classification when specimens are few and highly varied between series. The paper's 99.44% width result likely reflects a similar random-split leakage issue.
+
+---
+
 ## Next Steps
 
-### Neural Networks (in progress)
+### Neural Networks
 - [x] **CNN on MFCC images** — EfficientNet-B0 feature extraction + MLP head. 92.33% accuracy. Lower than classical ML due to ImageNet domain mismatch and frozen backbone. Full fine-tuning on GPU would close the gap.
 - [x] **1D CNN on raw waveform** — fully end-to-end, no feature engineering. 99.75% accuracy, 99.31% F1. Best overall model — matches SVM without any hand-crafted features.
-- [ ] **LSTM on MFCC frame sequences** — treat each hit as a time series of MFCC frames (~15-20 frames × 13 coefficients). LSTM captures temporal evolution of hammer strike (attack → resonance → decay) that mean/std features throw away.
-- [ ] **MLP on tabular features** — simple NN baseline on the same 29 features used by classical classifiers.
-- [ ] **Autoencoder anomaly detection** — train only on Intact sounds; cracked = high reconstruction error. Unsupervised; treats class imbalance as an advantage.
+- [x] **LSTM on MFCC frame sequences** — 9 frames × 13 coefficients per hit. 99.20% accuracy, 97.79% F1. Competitive with XGBoost without hand-crafted features.
+- [x] **MLP on tabular features** — same 29 features as classical classifiers, different learner. 99.60% accuracy, 98.89% F1. Outperforms XGBoost and LSTM; confirms the features are rich enough for a small NN to exploit.
 
 ### Classification Extensions
-- [ ] **Crack width classification** — Level 2a from the paper: 3-class problem (0.2 / 0.4 / 0.6 mm) using specimen subfolders already in `Class_sounds/Cracked/`
-- [ ] **Crack depth classification** — Level 2b from the paper: binary (20 mm / 40 mm) using series 1 vs series 2 specimens
+- [x] **Crack width classification** — Level 2a: 3-class (0.2 / 0.4 / 0.6 mm). Specimen-level split reveals ~33-42% test accuracy — near-random chance on an unseen specimen. See Level 2a results above.
+- [ ] **Crack depth classification** — Level 2b from the paper: binary (20 mm / 40 mm)
 - [ ] **Align MFCC features with paper** — re-extract using 12 coefficients (drop #1), max + mean per coefficient (24 features) for a fairer apples-to-apples comparison

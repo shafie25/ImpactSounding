@@ -27,7 +27,7 @@ from sklearn.metrics import (
 )
 
 FEATURES_FILE = "Labeled_Features.xlsx"
-OUTPUT_DIR    = os.path.join("Classifier Results", "SVM")
+OUTPUT_DIR    = os.path.join("Classifier Results", "CrackDetection", "SVM")
 RANDOM_STATE  = 42
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)

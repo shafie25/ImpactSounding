@@ -1,0 +1,13 @@
+{
+  "model": "MLP",
+  "task": "CrackWidth",
+  "test_accuracy": 0.3317,
+  "test_f1_macro": 0.1921,
+  "test_f1_02mm": 0.0897,
+  "test_f1_04mm": 0.0,
+  "test_f1_06mm": 0.4865,
+  "cv_accuracy": 1.0,
+  "cv_f1_macro": 1.0,
+  "best_epoch": 28,
+  "best_val_f1": 1.0
+}

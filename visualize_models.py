@@ -1,12 +1,15 @@
 # ============================================================
 # visualize_models.py
-# Model visualization for CNN_1D and CNN_MFCC
+# Model visualization for CNN_1D, CNN_MFCC, LSTM, and MLP
 #
 # Produces (all saved to Classifier Results/Visualization/):
 #   1. torchinfo architecture summaries (.txt)
 #   2. ONNX exports — open in https://netron.app for a graph
 #   3. Grad-CAM heatmaps for CNN_1D (which waveform regions
 #      drive each prediction)
+#
+# Note: Grad-CAM is CNN-specific and is not applied to the
+# LSTM or MLP models.
 #
 # Usage:
 #   python visualize_models.py
@@ -31,10 +34,12 @@ from torchinfo import summary
 # PATHS
 # ============================================================
 
-CNN1D_PT    = os.path.join("Classifier Results", "CNN_1D",   "best_model.pt")
-MFCC_PT     = os.path.join("Classifier Results", "CNN_MFCC", "best_head.pt")
+CNN1D_PT    = os.path.join("Classifier Results", "CrackDetection", "CNN_1D",   "best_model.pt")
+MFCC_PT     = os.path.join("Classifier Results", "CrackDetection", "CNN_MFCC", "best_head.pt")
+LSTM_PT     = os.path.join("Classifier Results", "CrackDetection", "LSTM",     "best_model.pt")
+MLP_PT      = os.path.join("Classifier Results", "CrackDetection", "MLP",      "best_model.pt")
 DATA_DIR    = os.path.join("Specimens", "Class_sounds")
-OUTPUT_DIR  = os.path.join("Classifier Results", "Visualization")
+OUTPUT_DIR  = os.path.join("Classifier Results", "CrackDetection", "Visualization")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -80,6 +85,49 @@ def build_mfcc_head():
         nn.Dropout(0.3),
         nn.Linear(256, 2),
     )
+
+
+class LSTMClassifier(nn.Module):
+    """Must match Classifier_LSTM.py exactly."""
+    def __init__(self, input_size=13, hidden_size=64, num_layers=2, dropout=0.3):
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0.0,
+        )
+        self.head = nn.Sequential(
+            nn.Linear(hidden_size, 32),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(32, 2),
+        )
+
+    def forward(self, x):
+        _, (h_n, _) = self.lstm(x)
+        return self.head(h_n[-1])
+
+
+class MLP(nn.Module):
+    """Must match Classifier_MLP.py exactly."""
+    def __init__(self, input_dim=29, dropout=0.3):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, 2),
+        )
+
+    def forward(self, x):
+        return self.net(x)
 
 
 # ============================================================
@@ -288,7 +336,43 @@ def main():
     export_onnx(head, dummy_feat, "cnn_mfcc_head")
 
     # ----------------------------------------------------------
-    # 3.  Grad-CAM on CNN_1D
+    # 3.  LSTM  — summary + ONNX
+    # ----------------------------------------------------------
+    print("=" * 60)
+    print("LSTM  (MFCC frame sequences -> 2-layer LSTM -> MLP)")
+    print("=" * 60)
+
+    lstm_model = LSTMClassifier().to(device)
+    lstm_model.load_state_dict(torch.load(LSTM_PT, map_location=device))
+    lstm_model.eval()
+
+    print("\n--Architecture summary --")
+    save_summary(lstm_model, input_size=(1, 9, 13), name="lstm")
+
+    print("--ONNX export --")
+    dummy_seq = torch.zeros(1, 9, 13)
+    export_onnx(lstm_model, dummy_seq, "lstm")
+
+    # ----------------------------------------------------------
+    # 4.  MLP  — summary + ONNX
+    # ----------------------------------------------------------
+    print("=" * 60)
+    print("MLP  (29 tabular features -> 2-hidden-layer MLP)")
+    print("=" * 60)
+
+    mlp_model = MLP().to(device)
+    mlp_model.load_state_dict(torch.load(MLP_PT, map_location=device))
+    mlp_model.eval()
+
+    print("\n--Architecture summary --")
+    save_summary(mlp_model, input_size=(1, 29), name="mlp")
+
+    print("--ONNX export --")
+    dummy_tab = torch.zeros(1, 29)
+    export_onnx(mlp_model, dummy_tab, "mlp")
+
+    # ----------------------------------------------------------
+    # 5.  Grad-CAM on CNN_1D
     # ----------------------------------------------------------
     print("=" * 60)
     print(f"Grad-CAM  (CNN_1D, {GRADCAM_N} samples per class)")
@@ -315,7 +399,7 @@ def main():
     print("\nDone. All outputs in:", OUTPUT_DIR)
     print("\nTo view the ONNX graphs:")
     print("  1. Go to https://netron.app")
-    print("  2. Drag in cnn1d.onnx  or  cnn_mfcc_head.onnx")
+    print("  2. Drag in cnn1d.onnx, cnn_mfcc_head.onnx, lstm.onnx, or mlp.onnx")
 
 
 if __name__ == "__main__":

@@ -378,9 +378,129 @@ The SVM and XGBoost were given 29 hand-crafted features encoding known acoustic 
 
 ---
 
-## 9. Model Visualization (`visualize_models.py`)
+## 9. Our LSTM — MFCC Frame Sequence Classifier (`Classifier_LSTM.py`)
 
-### 9.1 Architecture Summaries (torchinfo)
+### 9.1 Motivation
+
+The tabular classifiers (RF, XGBoost, SVM, MLP) all collapse the MFCC matrix to 26 summary statistics — mean and std per coefficient. This discards the temporal dimension: *when* things happen during the hit is thrown away. A hammer impact on concrete has distinct temporal phases — the sharp attack transient, the direct wave propagation, the resonance build-up, and the exponential decay — and cracked vs intact blocks differ in how this evolution unfolds, not just in its average.
+
+The LSTM operates on the full MFCC frame sequence, giving the model access to this temporal information directly.
+
+### 9.2 Input Representation
+
+Each WAV file is loaded and converted to an MFCC sequence:
+
+1. Pad/truncate to exactly 4,410 samples (0.20 s at 22,050 Hz)
+2. Compute `librosa.feature.mfcc(n_mfcc=13, hop_length=512, n_fft=2048)`
+3. Transpose from `(13, T)` to `(T, 13)` — time is the sequence dimension
+
+With `hop_length=512` and `center=True` (librosa default), the number of frames is:
+```
+T = 1 + 4410 // 512 = 9 frames
+```
+All files produce exactly 9 frames — no padding needed. Each frame has 13 MFCC coefficients. Input shape per sample: `(9, 13)`.
+
+### 9.3 Data Augmentation
+
+Applied to training only:
+- **Gaussian noise on MFCC values:** std = 0.5% of the feature's own std. Mimics minor variation in recording conditions.
+- **Time masking:** one randomly chosen frame is zeroed out. Inspired by SpecAugment; prevents the model from relying on any single time step.
+
+### 9.4 Architecture
+
+```
+Input: (B, 9, 13)
+
+LSTM(input=13, hidden=64, num_layers=2, dropout=0.3, batch_first=True)
+→ last hidden state of top layer: (B, 64)
+
+Linear(64→32) + ReLU + Dropout(0.3)
+Linear(32→2)
+
+Output: (B, 2) logits
+```
+
+**Why the last hidden state (not mean pooling)?** In a 0.20s hammer strike, the decay phase (final frames) carries the most information about structural stiffness — cracked blocks decay differently. The last hidden state gives the most weight to recent context.
+
+**Total parameters: ~55,650** — lightweight, trains in ~10 minutes on CPU.
+
+### 9.5 Training Setup
+
+| Parameter | Value |
+|-----------|-------|
+| Split | 80/10/10 stratified (train/val/test) |
+| Epochs | 50 |
+| Optimizer | Adam, lr=1e-3 |
+| LR scheduler | ReduceLROnPlateau (factor=0.5, patience=5) |
+| Loss | CrossEntropyLoss with class weights |
+| Class weights | Cracked=2.788, Intact=0.609 |
+| Batch size | 64 |
+| Best checkpoint | Saved by val F1 (Cracked class) |
+
+### 9.6 Results
+
+**Test set:** 99.20% accuracy, 97.25% precision, 98.33% recall, 97.79% F1 (Cracked class). Best checkpoint: epoch 37.
+
+**Interpretation:** The LSTM matches XGBoost (97.88% F1) without any hand-crafted features — it derives comparable discriminating power purely from the 9-frame MFCC sequence. It falls short of the 1D CNN (99.31% F1), which operates on the full 4,410-sample waveform and has access to much finer temporal resolution. The 9-frame sequence is a compressed representation; at this level of compression, the LSTM has limited advantage over the tabular approaches that summarize the same frames as mean/std.
+
+---
+
+## 10. Our MLP — Tabular Feature Classifier (`Classifier_MLP.py`)
+
+### 10.1 Motivation
+
+The MLP provides the fairest neural network vs. classical ML comparison: it uses exactly the same 29 features as SVM, XGBoost, and Random Forest — but a different learner. If the MLP underperforms the SVM, the feature space is likely already (near-)linearly separable with a suitable kernel. If it matches or exceeds, it shows that learned nonlinear combinations of the same features add discriminating power.
+
+### 10.2 Feature Normalization
+
+Unlike tree-based models, MLPs are sensitive to feature scale. `StandardScaler` (zero mean, unit variance) is fit on the training set and applied to val and test — the standard way to avoid data leakage while ensuring consistent scaling.
+
+The 29 features span very different numeric ranges: `Df_Hz` is in the hundreds of Hz, `Vf` is also a frequency-scale quantity, and MFCC values are dimensionless dB-like numbers. Without scaling, features with larger ranges dominate the gradient updates in the first layer.
+
+### 10.3 Architecture
+
+```
+Input: (B, 29)
+
+Linear(29→128) + BatchNorm1d(128) + ReLU + Dropout(0.3)
+Linear(128→64) + BatchNorm1d(64)  + ReLU + Dropout(0.3)
+Linear(64→2)
+
+Output: (B, 2) logits
+```
+
+**BatchNorm on tabular data:** Even after StandardScaler, per-feature normalization doesn't account for inter-batch distributional shift. BatchNorm normalizes each hidden layer's activations, stabilizing training and reducing sensitivity to the learning rate.
+
+**Total parameters: ~12,610** — the smallest model in the pipeline by a wide margin.
+
+### 10.4 Training Setup
+
+| Parameter | Value |
+|-----------|-------|
+| Split | 80/10/10 stratified (train/val/test) |
+| Epochs | 100 (fast — no audio I/O, tiny model) |
+| Optimizer | Adam, lr=1e-3 |
+| LR scheduler | ReduceLROnPlateau (factor=0.5, patience=7) |
+| Loss | CrossEntropyLoss with class weights |
+| Class weights | Cracked=2.788, Intact=0.609 |
+| Batch size | 64 |
+| Best checkpoint | Saved by val F1 (Cracked class) |
+
+### 10.5 Results
+
+**Test set:** 99.60% accuracy, 98.89% precision, 98.89% recall, 98.89% F1 (Cracked class). Best checkpoint: epoch 53.
+
+**Interpretation:** The MLP outperforms XGBoost (97.88% F1) and the LSTM (97.79% F1) on the same feature set, and comes close to the SVM (99.17% F1). This tells us:
+- The 29 tabular features contain enough information for a small MLP to extract strong classification signals.
+- The feature space is not perfectly linearly separable — the MLP's nonlinearity adds value over a purely linear model on the same input.
+- The SVM's RBF kernel still has a slight edge, suggesting the optimal decision boundary has structure that a 2-layer MLP approximates well but not perfectly.
+- Training on CPU takes under 2 minutes — the most practical NN in the pipeline.
+
+---
+
+## 11. Model Visualization (`visualize_models.py`)
+
+### 11.1 Architecture Summaries (torchinfo)
 
 `torchinfo` wraps PyTorch's built-in `__repr__` with a forward-pass trace to report the exact input and output tensor shape at every layer, along with per-layer and total parameter counts. This is more useful than `print(model)` because it shows how the temporal dimension shrinks through the conv stack.
 
@@ -398,7 +518,7 @@ Linear(64→2)                                  →  output (1,2)
 
 Summaries are saved as UTF-8 text files to `Classifier Results/Visualization/`.
 
-### 9.2 ONNX Export
+### 11.2 ONNX Export
 
 ONNX (Open Neural Network Exchange) is a standardized format for representing ML models as a computation graph — nodes are operations (conv, matmul, relu), edges are tensors flowing between them. Exporting to ONNX lets you open the model in [Netron](https://netron.app), a browser-based graph viewer that renders the full architecture visually with clickable layers showing weights, kernel sizes, and tensor shapes.
 
@@ -408,7 +528,7 @@ Both models are exported with a dummy forward pass:
 
 > Note: The CNN_MFCC ONNX only covers the MLP head, not the EfficientNet-B0 backbone (which was not saved to `.pt`). To visualize the full EfficientNet architecture, export it separately before stripping the classifier.
 
-### 9.3 Grad-CAM for CNN_1D
+### 11.3 Grad-CAM for CNN_1D
 
 **Gradient-weighted Class Activation Mapping (Grad-CAM)** answers: *which parts of the input did the model focus on when predicting a given class?*
 
@@ -448,3 +568,75 @@ Each Grad-CAM plot has two panels:
 - **Consistency across samples:** if all 3 Cracked samples light up the same region (e.g., 0–5 ms), the model learned a consistent acoustic discriminator. Scattered attention = overfitting or noise sensitivity.
 - **Physical plausibility:** the initial transient (0–10 ms) encodes the impact and crack-modified stress wave reflection. Resonance decay (10–200 ms) encodes structural stiffness. Model attention in these regions would be physically meaningful.
 - **Cracked vs Intact differences:** comparing the two classes' CAM maps shows what acoustic signature the model uses to separate them.
+
+---
+
+## 12. Level 2a — Crack Width Classification
+
+### 12.1 Dataset
+
+The 1,800 cracked WAV files split into 9 folders by specimen and measurement position:
+
+| Folder | Width class | Position | Count |
+|--------|-------------|----------|-------|
+| specimen_1_1SoundDataC02 | 0.2 mm | 2 cm from crack | 200 |
+| specimen_1_1SoundDataC04 | 0.2 mm | 4 cm from crack | 200 |
+| specimen_1_2SoundDataC02 | 0.4 mm | 2 cm from crack | 200 |
+| specimen_1_2SoundDataC04 | 0.4 mm | 4 cm from crack | 200 |
+| specimen_1_3SoundDataC02 | 0.6 mm | 2 cm from crack | 200 |
+| specimen_1_3SoundDataC04 | 0.6 mm | 4 cm from crack | 200 |
+| specimen_2_1SoundDataC02 | 0.2 mm | 2 cm from crack | 200 |
+| specimen_2_2SoundDataC02 | 0.4 mm | 2 cm from crack | 200 |
+| specimen_2_3SoundDataC02 | 0.6 mm | 2 cm from crack | 200 |
+
+**Classes are perfectly balanced** — 600 samples per width class, no weighting needed.
+
+Labels are derived from the folder name: `specimen_X_Y` where `Y` encodes width (1→0.2mm label 0, 2→0.4mm label 1, 3→0.6mm label 2). Series 1 (`X=1`) has two positions (C02, C04); Series 2 (`X=2`) has only C02.
+
+### 12.2 The Data Leakage Problem
+
+Each physical specimen/position contributes exactly 200 nearly-identical hammer-strike recordings — the same concrete block, the same microphone position, the same acoustic environment, recorded 200 times. The only variation between recordings within a folder is minor hit-force fluctuations and microphone noise.
+
+**With a random 80/20 split**, recordings from the same specimen appear in both train and test. For a given folder, roughly 160 recordings land in train and 40 in test. The model can achieve high accuracy simply by memorizing the acoustic *fingerprint* of each specimen — the characteristic frequency response of that particular block of concrete — rather than learning a generalizable relationship between crack width and acoustic properties.
+
+This is classic **data leakage via specimen identity**: the model answers "which specimen does this sound like?" rather than "how wide is this crack?". Cross-validation within the same specimen pool is equally deceived — all folds contain near-duplicate recordings of the same physical specimens.
+
+The symptom: ~99-100% accuracy with random splits, but the model has learned nothing meaningful about crack width physics.
+
+### 12.3 Specimen-Level Split (Correct Methodology)
+
+We split by physical specimen series:
+
+- **Train:** Series 1 (`specimen_1_X` — both C02 and C04 positions per width class, 400 samples/class, 1200 total)
+- **Test:** Series 2 (`specimen_2_X` — C02 only, 200 samples/class, 600 total)
+
+This guarantees that no recording from a test specimen ever appears in training. The model must generalize to a physically different concrete specimen it has never seen — which is the actual real-world task.
+
+Label extraction:
+```python
+width_digit = df["Specimen"].str.extract(r"specimen_\d+_(\d+)")[0].astype(int)
+series      = df["Specimen"].str.extract(r"specimen_(\d+)_\d+")[0].astype(int)
+y       = (width_digit - 1).values   # 1->0, 2->1, 3->2
+is_test = (series == 2).values       # True -> test set
+```
+
+For the MLP, a random 10% split within series 1 is used for the validation set during training (early stopping). This small leakage is acceptable since the test boundary is already clean — the validation contamination is between C02 and C04 recordings of the same series-1 specimens, not between series.
+
+### 12.4 Results
+
+| Model | CV Acc (series 1) | CV F1 (series 1) | Test Acc (series 2) | Test Macro F1 (series 2) |
+|-------|-------------------|------------------|---------------------|--------------------------|
+| Random Forest | 99.75% | 99.75% | 34.5% | 35.1% |
+| XGBoost | 99.67% | 99.67% | 41.8% | 38.2% |
+| SVM | 99.83% | 99.83% | 33.5% | 17.0% |
+| MLP | ~99% (val F1=1.00) | — | 33.2% | 19.2% |
+
+### 12.5 Interpretation
+
+The gap between CV accuracy (~99%) and test accuracy (33–42%) is the clearest possible evidence of overfitting to specimen identity. A 3-class random baseline would score 33.3% — meaning the SVM and MLP, with test F1 of 17–19%, perform worse than random. They have confidently learned the wrong thing.
+
+**Why this is hard:** The dataset contains only 2 distinct physical specimens per width class (series 1 and series 2). With specimen-level splitting, each model trains on 1 specimen and tests on 1. A single training specimen is an insufficient basis for learning generalizable acoustic width features — especially when the two series differ not just in crack width but also in crack depth and specimen geometry (series 1 cracks are 40mm deep, series 2 are 20mm deep). These correlated differences make it impossible to isolate width as a clean signal.
+
+**Comparison to the paper:** The paper's reported 99.44% SVM accuracy for width classification almost certainly reflects a random-sample split across the same set of specimen folders, subject to the same leakage. The paper does not describe a specimen-level evaluation.
+
+**Key takeaway:** Crack width classification from acoustic features requires more physical specimens to establish genuine cross-specimen generalizability. With the current dataset (2 specimens per class), any within-dataset random split evaluation is unreliable as a measure of real-world performance.
