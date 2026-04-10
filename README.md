@@ -316,10 +316,10 @@ Loads the trained `.pt` model weights and produces three types of visualization 
 
 | | Paper SVM | Our SVM | Our XGBoost | Our RF | Our MFCC CNN | Our 1D CNN | Our LSTM | Our MLP |
 |---|---|---|---|---|---|---|---|---|
-| Accuracy | 97.59% | 99.70% | 99.25% | 98.51% | 92.33% | **99.75%** | 99.20% | 99.60% |
-| Precision (Cracked) | 97.95% | 99.17% | **99.43%** | 97.97% | 74.41% | 99.17% | 97.25% | 98.89% |
-| Recall (Cracked) | 97.22% | 99.17% | 96.39% | 93.61% | 87.22% | **99.44%** | 98.33% | 98.89% |
-| F1 (Cracked) | 97.58% | 99.17% | 97.88% | 95.74% | 80.31% | **99.31%** | 97.79% | 98.89% |
+| Accuracy | 97.59% | 99.70% | 99.25% | 98.51% | 92.33% | **99.75%** | 99.20% | 99.70% |
+| Precision (Cracked) | 97.95% | 99.17% | **99.43%** | 97.97% | 74.41% | 99.17% | 97.25% | 99.17% |
+| Recall (Cracked) | 97.22% | 99.17% | 96.39% | 93.61% | 87.22% | **99.44%** | 98.33% | 99.17% |
+| F1 (Cracked) | 97.58% | 99.17% | 97.88% | 95.74% | 80.31% | **99.31%** | 97.79% | 99.17% |
 
 **Our 1D CNN is the best overall model**, edging out the SVM on accuracy, recall, and F1 — with zero hand-crafted features. Caveats vs. the paper:
 - Paper used 70/30 split; we used 80/20 (more training data = slight advantage)
@@ -403,15 +403,15 @@ The stark contrast between CV (within series 1, ~99%) and test (series 2, 33-42%
 
 ### Results with Specimen-Level Split
 
-| Model | Test Accuracy | Test Macro F1 |
-|-------|--------------|---------------|
-| Random Forest | 71.7% | — |
-| XGBoost | 78.3% | — |
-| SVM | 80.8% | — |
-| MLP | 89.3% | — |
-| 1D CNN | 65.7% | — |
+| Model | Test Accuracy | Macro F1 | F1 (20 mm) | F1 (40 mm) |
+|-------|--------------|----------|------------|------------|
+| Random Forest | 71.7% | 59.6% | 81.7% | 37.5% |
+| XGBoost | 78.3% | 77.6% | 81.6% | 73.7% |
+| SVM | 80.8% | 80.3% | 83.6% | 77.0% |
+| MLP | **89.3%** | **88.6%** | **91.5%** | **85.7%** |
+| 1D CNN | 65.7% | 65.7% | 65.3% | 66.0% |
 
-These numbers are better than the width collapse but do not necessarily mean the models learned crack depth. The C02/C04 distance-from-crack signal genuinely differs between specimens (closer strikes sound different regardless of depth), which may explain some of the apparent generalization. The paper's 96.67% depth result used a random split and likely suffers from the same leakage.
+The RF's low macro F1 (59.6%) despite 71.7% accuracy reveals it almost completely fails on the minority 40mm class (F1=37.5%) — it achieves accuracy by predicting 20mm most of the time. XGBoost, SVM, and MLP handle the imbalance better. These numbers are better than the width collapse but do not necessarily mean the models learned crack depth. The C02/C04 distance-from-crack signal genuinely differs between specimens (closer strikes sound different regardless of depth), which may explain some of the apparent generalization. The paper's 96.67% depth result used a random split and likely suffers from the same leakage.
 
 ---
 
