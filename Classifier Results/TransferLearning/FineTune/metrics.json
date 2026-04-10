@@ -1,14 +1,14 @@
 {
   "model": "1D CNN Frozen Backbone",
-  "train_locations": 85,
+  "train_locations": 35,
   "val_locations": 5,
   "test_locations": 10,
   "trainable_params": 16578,
   "frozen_params": 462240,
-  "best_epoch": 8,
-  "best_val_acc": 1.0,
-  "test_accuracy": 0.75,
-  "test_macro_f1": 0.7442,
-  "zeroshot_acc": 0.7,
-  "zeroshot_f1": 0.6703
+  "best_epoch": 28,
+  "best_val_acc": 0.7683,
+  "test_accuracy": 0.875,
+  "test_macro_f1": 0.8743,
+  "zeroshot_acc": 0.825,
+  "zeroshot_f1": 0.8195
 }

@@ -745,9 +745,9 @@ This replicates the format of the lab WAVs (4,410 samples at 22,050 Hz per hit),
 
 ### 14.3 Location-Level Data Split
 
-The L and R microphone recordings of the same physical location are acoustically correlated — they record the same physical event from two positions. A random file-level split would put correlated files on both sides of the train/test boundary, creating leakage.
+The filename format is `X-Y_mic.wav` where X = physical location (1–50), Y = state (1=Normal, 2=Abnormal), and mic = L or R. A naive regex that extracts `X-Y` as the location ID would create 100 groups of 2 files — keeping L and R together but splitting Normal and Abnormal from the same physical structure into potentially different partitions. That is leakage: the model sees "what bridge location 5 sounds like" during training and is then tested on a different state of the same bridge.
 
-The correct split is **location-level**: all 4 files from the same location stay together in the same partition. With 50 unique locations, the split is 35 train / 5 val / 10 test locations (140/20/40 files).
+The correct grouping extracts only `X` (the physical location number), keeping all 4 files from the same structure (Normal_L, Normal_R, Abnormal_L, Abnormal_R) in the same partition. With 50 unique physical locations, the split is 35 train / 5 val / 10 test locations (140/20/40 files).
 
 ### 14.4 Zero-Shot Strategy
 
@@ -769,4 +769,4 @@ The strategy: keep all four conv blocks fixed (they encode useful acoustic repre
 
 Training details: Adam optimizer on head params only (lr=1e-3), ReduceLROnPlateau scheduler, 30 epochs, checkpoint by val accuracy.
 
-**Result:** Zero-shot 70.0% → frozen backbone 75.0% on the 10-location test split. A consistent improvement with only 16.5K parameters being updated.
+**Result:** Zero-shot 82.5% → frozen backbone 87.5% on the 10-location test split. A consistent improvement with only 16.5K parameters being updated.

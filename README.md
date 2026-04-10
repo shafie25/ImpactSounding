@@ -421,7 +421,7 @@ A second Japanese dataset (`JapanDataset2`) contains 200 real-world bridge hamme
 
 **Audio format:** Each recording contains 4–5 individual hammer impacts (mean 4.0, total 807 impacts across 200 files). Impacts are detected via energy peak segmentation and each is extracted as a 4,410-sample window at 22,050 Hz — matching the lab format. Predictions are aggregated with majority vote per file.
 
-**Evaluation split:** Location-level to prevent L/R microphone leakage — all 4 files from the same physical location (Normal_L, Normal_R, Abnormal_L, Abnormal_R) are kept together. Split: 35 train / 5 val / 10 test locations (140/20/40 files).
+**Evaluation split:** Location-level to prevent leakage — the filename format is `X-Y_mic.wav` where X = physical location (1–50) and Y = state (1=Normal, 2=Abnormal). Grouping must be by X only, so both the Normal and Abnormal recordings of the same physical structure stay in the same partition. Split: 35 train / 5 val / 10 test locations (140/20/40 files).
 
 ### Zero-Shot Results (lab models applied directly, no retraining)
 
@@ -441,8 +441,8 @@ All four conv blocks frozen (462K params); only the classifier head retrained (1
 
 | Approach | Test Accuracy | Macro F1 |
 |----------|--------------|----------|
-| Zero-shot (same test split) | 70.0% | 0.670 |
-| **Frozen backbone + head retrain** | **75.0%** | **0.744** |
+| Zero-shot (same test split) | 82.5% | 0.820 |
+| **Frozen backbone + head retrain** | **87.5%** | **0.874** |
 
 Adapting just the head with 35 training locations (140 files) gives a consistent improvement over zero-shot. Full fine-tuning was deliberately not pursued — retraining all weights on 140 files would destroy the lab-learned representations.
 

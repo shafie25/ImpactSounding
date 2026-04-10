@@ -142,9 +142,11 @@ def load_bridge_records():
 
     labels_df["clean"] = labels_df["filename"].apply(clean_fn)
 
-    # Extract location id: "3-1_L.wav" -> location "3-1"
+    # Extract physical location id: "3-1_L.wav" -> "3", "3-2_R.wav" -> "3"
+    # X-Y format: X = physical location (1-50), Y = state (1=Normal, 2=Abnormal)
+    # Must group by X only so both states from the same structure stay together
     def get_location(fn):
-        m = re.match(r"(.+?)_[LR]\.wav", fn, re.IGNORECASE)
+        m = re.match(r"(\d+)-\d+_[LR]\.wav", fn, re.IGNORECASE)
         return m.group(1) if m else fn
 
     labels_df["location"] = labels_df["clean"].apply(get_location)
