@@ -1,0 +1,10 @@
+{
+  "model": "RandomForest",
+  "task": "CrackDepth",
+  "test_accuracy": 0.7167,
+  "test_f1_macro": 0.5959,
+  "test_f1_20mm": 0.8168,
+  "test_f1_40mm": 0.375,
+  "cv_accuracy": 0.9883,
+  "cv_f1_macro": 0.9869
+}

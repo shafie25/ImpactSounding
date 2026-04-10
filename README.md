@@ -137,7 +137,15 @@ JapanesePaper2Code/
 │   │   ├── MLP/                 best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
 │   │   ├── CNN_1D/              best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
 │   │   └── Visualization/       torchinfo summaries, ONNX exports, Grad-CAM heatmaps (CNN_1D + MLP)
-│   └── CrackDepth/              Level 2b — 20 mm / 40 mm (planned)
+│   ├── CrackDepth/              Level 2b — 20 mm / 40 mm
+│   │   ├── RandomForest/        metrics.json, confusion_matrix.png, cv_scores.png
+│   │   ├── XGBoost/             metrics.json, confusion_matrix.png, cv_scores.png
+│   │   ├── SVM/                 metrics.json, confusion_matrix.png, cv_scores.png
+│   │   ├── MLP/                 best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   │   └── CNN_1D/              best_model.pt, metrics.json, confusion_matrix.png, training_curves.png
+│   └── TransferLearning/        Bridge dataset (JapanDataset2)
+│       ├── zero_shot_metrics.json, zero_shot_comparison.png, cm_*.png
+│       └── FineTune/            frozen-backbone fine-tune results
 ├── MFCC_Images/
 │   ├── Cracked/                 1,800 × 224×224px MFCC spectrogram images
 │   └── Intact/                  8,236 × 224×224px MFCC spectrogram images
@@ -159,11 +167,20 @@ JapanesePaper2Code/
 ├── Classifier_Width_Tabular.py  Level 2a: RF + XGBoost + SVM for crack width (specimen-level split)
 ├── Classifier_Width_MLP.py      Level 2a: MLP for crack width (specimen-level split)
 ├── Classifier_Width_1DCNN.py    Level 2a: 1D CNN for crack width (specimen-level split)
+├── Classifier_Depth_Tabular.py  Level 2b: RF + XGBoost + SVM for crack depth (specimen-level split)
+├── Classifier_Depth_MLP.py      Level 2b: MLP for crack depth (specimen-level split)
+├── Classifier_Depth_1DCNN.py    Level 2b: 1D CNN for crack depth (specimen-level split)
+├── Transfer_ZeroShot.py         Zero-shot: apply lab models to bridge data, no retraining
+├── Transfer_FineTune.py         Frozen-backbone fine-tune: freeze CNN conv blocks, retrain head on bridge data
 ├── Labeled Feature Extraction.py  extracts Df, Vf, MFCC stats for all 10,036 WAVs
 ├── Labeled_Features.xlsx        10,036 rows × 33 columns feature table
+├── JapanDataset2/               200 bridge hammer recording WAVs (50 locations × 2 states × L/R mic)
+├── JapanDataset2Labels.csv      filename → Normal/Abnormal labels for bridge dataset
 ├── MFCC_Image_Generator.py      converts each WAV to a 224×224 MFCC image
 ├── visualize_models.py          Level 1: torchinfo summaries, ONNX exports, Grad-CAM heatmaps
 ├── visualize_width_models.py    Level 2a: torchinfo summaries, ONNX exports, Grad-CAM heatmaps
+├── Dataset_Notes.md             How the data points were created + leakage problems explained
+├── JapanesePaper_Summary.md     Detailed summary of the original paper (all experiments, results)
 ├── JapanesePaper.pdf
 ├── README.md
 └── TECHNICAL_NOTES.md
@@ -376,6 +393,61 @@ The stark contrast between CV (within series 1, ~99%) and test (series 2, 33-42%
 
 ---
 
+## Level 2b — Crack Depth Classification Results
+
+**Dataset:** 1,800 cracked samples filtered to depth task. Label: `C04` position → 40 mm depth, `C02` position → 20 mm depth. Class imbalance: 600 (40 mm) vs 1,200 (20 mm).
+
+**Specimen-level split:** Specimens ending in `_3` (specimen_1_3, specimen_2_3) held out as test. All remaining specimens used for train/CV.
+
+**Important caveat — position confound:** The 20 mm vs 40 mm depth labels are inseparable from hammer position: 20 mm is always `C02` (2 cm from crack) and 40 mm is always `C04` (4 cm from crack). The model cannot distinguish whether it learned crack depth or simply that closer strikes sound different from farther strikes. The two signals are perfectly correlated in this dataset.
+
+### Results with Specimen-Level Split
+
+| Model | Test Accuracy | Test Macro F1 |
+|-------|--------------|---------------|
+| Random Forest | 71.7% | — |
+| XGBoost | 78.3% | — |
+| SVM | 80.8% | — |
+| MLP | 89.3% | — |
+| 1D CNN | 65.7% | — |
+
+These numbers are better than the width collapse but do not necessarily mean the models learned crack depth. The C02/C04 distance-from-crack signal genuinely differs between specimens (closer strikes sound different regardless of depth), which may explain some of the apparent generalization. The paper's 96.67% depth result used a random split and likely suffers from the same leakage.
+
+---
+
+## Transfer Learning — Bridge Dataset (JapanDataset2)
+
+A second Japanese dataset (`JapanDataset2`) contains 200 real-world bridge hammer recordings from 50 bridge locations — 100 Normal (Intact) and 100 Abnormal (Cracked), each recorded from both a Left (L) and Right (R) microphone. This is a fundamentally different acoustic domain from the lab: outdoor environment, actual structural concrete, different hammer and microphone.
+
+**Audio format:** Each recording contains 4–5 individual hammer impacts (mean 4.0, total 807 impacts across 200 files). Impacts are detected via energy peak segmentation and each is extracted as a 4,410-sample window at 22,050 Hz — matching the lab format. Predictions are aggregated with majority vote per file.
+
+**Evaluation split:** Location-level to prevent L/R microphone leakage — all 4 files from the same physical location (Normal_L, Normal_R, Abnormal_L, Abnormal_R) are kept together. Split: 35 train / 5 val / 10 test locations (140/20/40 files).
+
+### Zero-Shot Results (lab models applied directly, no retraining)
+
+| Model | Per-File Accuracy | Per-File Macro F1 |
+|-------|------------------|-------------------|
+| Random Forest | 51.0% | 0.355 |
+| SVM | 50.0% | 0.333 |
+| MLP | 51.5% | 0.374 |
+| XGBoost | 66.5% | 0.647 |
+| **1D CNN** | **72.0%** | **0.707** |
+
+RF, SVM, and MLP predict nearly all samples as Normal (Intact) — the lab decision boundary doesn't transfer. XGBoost shows partial transfer. The 1D CNN transfers best, likely because raw waveform features are more domain-agnostic than hand-crafted spectral statistics.
+
+### Frozen-Backbone Fine-Tune (1D CNN head retrained on bridge data)
+
+All four conv blocks frozen (462K params); only the classifier head retrained (16.5K trainable params). This preserves the acoustic representations learned from lab data while adapting the decision boundary to the bridge domain.
+
+| Approach | Test Accuracy | Macro F1 |
+|----------|--------------|----------|
+| Zero-shot (same test split) | 70.0% | 0.670 |
+| **Frozen backbone + head retrain** | **75.0%** | **0.744** |
+
+Adapting just the head with 35 training locations (140 files) gives a consistent improvement over zero-shot. Full fine-tuning was deliberately not pursued — retraining all weights on 140 files would destroy the lab-learned representations.
+
+---
+
 ## Limitations & Cross-Dataset Generalization
 
 ### Domain Shift — Why Models Don't Transfer Out-of-the-Box
@@ -416,5 +488,10 @@ For crack detection (Level 1), fine-tuning is tractable: the crack vs. intact si
 
 ### Classification Extensions
 - [x] **Crack width classification** — Level 2a: 3-class (0.2 / 0.4 / 0.6 mm). Specimen-level split reveals ~33-42% test accuracy — near-random chance on an unseen specimen. See Level 2a results above.
-- [ ] **Crack depth classification** — Level 2b from the paper: binary (20 mm / 40 mm)
+- [x] **Crack depth classification** — Level 2b: binary (20 mm / 40 mm). Specimen-level split results 65–89% — better than width but confounded with hammer position. See Level 2b results above.
 - [ ] **Align MFCC features with paper** — re-extract using 12 coefficients (drop #1), max + mean per coefficient (24 features) for a fairer apples-to-apples comparison
+
+### Transfer Learning (Bridge Dataset)
+- [x] **Zero-shot transfer** — apply lab-trained models to bridge recordings with no adaptation. 1D CNN achieves 72% per-file accuracy. Tabular models collapse to near-random. See Transfer Learning section above.
+- [x] **Frozen-backbone fine-tune** — freeze 1D CNN conv blocks, retrain head only on bridge training locations. Improves from 70% to 75% on the test split. Implemented in `Transfer_FineTune.py`.
+- [ ] **Bridge data impact granularity experiment** — currently each recording (4–5 impacts) is treated as one sample via majority vote. Two alternatives to explore: (1) treat each extracted impact as an independent training sample (multiplies effective training data ~4×), or (2) use only one representative impact per recording to avoid correlated samples inflating performance. This may particularly help the frozen-backbone fine-tune where training data is limited.

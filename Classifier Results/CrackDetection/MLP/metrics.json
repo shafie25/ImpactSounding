@@ -1,13 +1,13 @@
 {
   "model": "MLP",
-  "test_accuracy": 0.996,
-  "test_precision": 0.9889,
-  "test_recall": 0.9889,
-  "test_f1": 0.9889,
-  "cv_accuracy": 0.998,
-  "cv_precision": 0.9944,
+  "test_accuracy": 0.997,
+  "test_precision": 0.9917,
+  "test_recall": 0.9917,
+  "test_f1": 0.9917,
+  "cv_accuracy": 0.999,
+  "cv_precision": 1.0,
   "cv_recall": 0.9944,
-  "cv_f1": 0.9944,
-  "best_epoch": 53,
-  "best_val_f1": 0.9944
+  "cv_f1": 0.9972,
+  "best_epoch": 39,
+  "best_val_f1": 0.9972
 }

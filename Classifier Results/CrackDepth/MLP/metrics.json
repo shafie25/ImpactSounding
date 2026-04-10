@@ -1,0 +1,12 @@
+{
+  "model": "MLP",
+  "task": "CrackDepth",
+  "test_accuracy": 0.8933,
+  "test_f1_macro": 0.886,
+  "test_f1_20mm": 0.9149,
+  "test_f1_40mm": 0.8571,
+  "cv_accuracy": 1.0,
+  "cv_f1_macro": 1.0,
+  "best_epoch": 4,
+  "best_val_f1": 1.0
+}

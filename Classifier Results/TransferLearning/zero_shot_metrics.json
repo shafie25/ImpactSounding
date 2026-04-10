@@ -1,0 +1,47 @@
+[
+  {
+    "model": "Random Forest",
+    "per_impact_acc": 0.5081,
+    "per_impact_f1": 0.3499,
+    "per_file_acc": 0.51,
+    "per_file_f1": 0.3552,
+    "n_files": 200,
+    "n_impacts": 807
+  },
+  {
+    "model": "XGBoost",
+    "per_impact_acc": 0.6468,
+    "per_impact_f1": 0.6389,
+    "per_file_acc": 0.665,
+    "per_file_f1": 0.6471,
+    "n_files": 200,
+    "n_impacts": 807
+  },
+  {
+    "model": "SVM",
+    "per_impact_acc": 0.5019,
+    "per_impact_f1": 0.3342,
+    "per_file_acc": 0.5,
+    "per_file_f1": 0.3333,
+    "n_files": 200,
+    "n_impacts": 807
+  },
+  {
+    "model": "MLP",
+    "per_impact_acc": 0.513,
+    "per_impact_f1": 0.3816,
+    "per_file_acc": 0.515,
+    "per_file_f1": 0.3737,
+    "n_files": 200,
+    "n_impacts": 807
+  },
+  {
+    "model": "1D CNN",
+    "per_impact_acc": 0.7311,
+    "per_impact_f1": 0.7167,
+    "per_file_acc": 0.72,
+    "per_file_f1": 0.7071,
+    "n_files": 200,
+    "n_impacts": 807
+  }
+]

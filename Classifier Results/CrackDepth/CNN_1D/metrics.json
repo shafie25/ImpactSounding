@@ -1,0 +1,12 @@
+{
+  "model": "CNN_1D",
+  "task": "CrackDepth",
+  "test_accuracy": 0.6567,
+  "test_f1_macro": 0.6566,
+  "test_f1_20mm": 0.6532,
+  "test_f1_40mm": 0.6601,
+  "cv_accuracy": 1.0,
+  "cv_f1_macro": 1.0,
+  "best_epoch": 9,
+  "best_val_f1": 1.0
+}

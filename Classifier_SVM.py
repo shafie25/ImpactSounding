@@ -17,6 +17,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import joblib
+
 from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -78,6 +80,8 @@ clf = Pipeline([
     ))
 ])
 clf.fit(X_train, y_train)
+joblib.dump(clf, os.path.join(OUTPUT_DIR, "model.joblib"))
+print("Saved: model.joblib")
 
 
 # ============================================================

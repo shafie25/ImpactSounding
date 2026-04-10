@@ -718,3 +718,55 @@ The crack width collapse and the cross-lab generalization failure are the **same
 - Cross-lab: gap = completely different concrete, environment, and recording setup
 
 The lesson from crack width — that acoustic models need diverse specimens to generalize — applies directly to cross-dataset transfer: the more physically varied the training data, the more robust the model will be to new environments.
+
+---
+
+## 14. Transfer Learning on Bridge Dataset (JapanDataset2)
+
+### 14.1 Dataset Description
+
+`JapanDataset2` is a second Japanese dataset containing 200 bridge hammer recordings from 50 physical bridge locations. Each location has 4 files: Normal_L, Normal_R, Abnormal_L, Abnormal_R (L/R = left and right microphone). The dataset is perfectly balanced: 100 Normal (Intact) and 100 Abnormal (Cracked) files.
+
+Key differences from the lab dataset:
+- **Real-world bridge structure** (not lab-fabricated concrete blocks)
+- **Outdoor acoustic environment** (no foam-lined isolation box)
+- **Different recording hardware** (different microphone, different hammer)
+- **Multiple impacts per file** — each recording contains 4–5 individual hammer impacts rather than one
+
+### 14.2 Impact Segmentation
+
+Each bridge recording file is segmented to extract individual impacts using energy peak detection:
+1. Compute frame energy (frame=512, hop=256 samples)
+2. Normalize energy to [0, 1]
+3. Find peaks with `height > 0.1` and `distance > 0.25s` (prevents double-counting the same impact)
+4. Extract a 4,410-sample window per peak, starting 10ms before the peak (220 samples at 22,050 Hz)
+
+This replicates the format of the lab WAVs (4,410 samples at 22,050 Hz per hit), allowing the same feature extraction and model inference code to run unchanged.
+
+### 14.3 Location-Level Data Split
+
+The L and R microphone recordings of the same physical location are acoustically correlated — they record the same physical event from two positions. A random file-level split would put correlated files on both sides of the train/test boundary, creating leakage.
+
+The correct split is **location-level**: all 4 files from the same location stay together in the same partition. With 50 unique locations, the split is 35 train / 5 val / 10 test locations (140/20/40 files).
+
+### 14.4 Zero-Shot Strategy
+
+Zero-shot means applying lab-trained models directly to bridge data with no bridge-domain training at all. The models (RF, XGBoost, SVM, MLP, 1D CNN) are loaded from their saved weights (`model.joblib` for sklearn models, `best_model.pt` for PyTorch models) and run on bridge impact features without any modification.
+
+**Why tabular models fail:** RF, SVM, and MLP learned to classify based on the specific feature distributions of the 6 lab specimens. The bridge domain has different concrete composition, geometry, and recording conditions — the feature values fall in regions of feature space the models have never seen, causing them to default to the majority class (Normal/Intact).
+
+**Why 1D CNN transfers better:** Raw waveforms capture more domain-general acoustic structure (attack shape, decay curve, time-frequency content) than pre-computed statistics. The CNN's convolutional filters learned temporal acoustic patterns that partially generalize across recording environments.
+
+### 14.5 Frozen-Backbone Fine-Tune
+
+The strategy: keep all four conv blocks fixed (they encode useful acoustic representations learned from lab data) and retrain only the 2-layer classifier head on bridge training data.
+
+**Why not retrain the full network:** With only 35 training locations (140 files, ~560 individual impacts), full fine-tuning would overwrite the lab-learned conv representations with noisy bridge-domain adaptations. The conv features are the valuable part — they took 10,036 labeled lab WAVs to learn.
+
+**Architecture split:**
+- Frozen: `conv_blocks` (4× Conv1d + BN + ReLU) + `gap` — 462,240 parameters
+- Trainable: `classifier` (Linear(256→64) → ReLU → Dropout → Linear(64→2)) — 16,578 parameters
+
+Training details: Adam optimizer on head params only (lr=1e-3), ReduceLROnPlateau scheduler, 30 epochs, checkpoint by val accuracy.
+
+**Result:** Zero-shot 70.0% → frozen backbone 75.0% on the 10-location test split. A consistent improvement with only 16.5K parameters being updated.

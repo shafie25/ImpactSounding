@@ -17,6 +17,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import joblib
+
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
 from sklearn.preprocessing import LabelEncoder
@@ -82,6 +84,8 @@ clf = XGBClassifier(
     n_jobs=-1
 )
 clf.fit(X_train, y_train)
+joblib.dump(clf, os.path.join(OUTPUT_DIR, "model.joblib"))
+print("Saved: model.joblib")
 
 
 # ============================================================

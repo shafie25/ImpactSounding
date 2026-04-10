@@ -1,0 +1,10 @@
+{
+  "model": "SVM",
+  "task": "CrackDepth",
+  "test_accuracy": 0.8083,
+  "test_f1_macro": 0.8027,
+  "test_f1_20mm": 0.8359,
+  "test_f1_40mm": 0.7695,
+  "cv_accuracy": 0.9983,
+  "cv_f1_macro": 0.9981
+}

@@ -1,0 +1,10 @@
+{
+  "model": "XGBoost",
+  "task": "CrackDepth",
+  "test_accuracy": 0.7833,
+  "test_f1_macro": 0.7764,
+  "test_f1_20mm": 0.8159,
+  "test_f1_40mm": 0.7368,
+  "cv_accuracy": 0.9883,
+  "cv_f1_macro": 0.9869
+}
