@@ -12,6 +12,12 @@
 # Classes are perfectly balanced (600 per class) — no class
 # weighting needed.
 #
+# Specimen-level split (matches Classifier_Width_Tabular.py):
+#   Train/Val: Series 1 (specimen_1_X folders) — 1,200 files
+#   Test:      Series 2 (specimen_2_X folders) —   600 files
+# This prevents data leakage from the same physical specimen
+# appearing in both train and test sets.
+#
 # Same architecture as CrackDetection CNN_1D. Stronger
 # augmentation to compensate for the smaller dataset (1,800
 # vs 10,036 files).
@@ -70,23 +76,25 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 def load_dataset(data_dir):
     """
     Walk Specimens/Class_sounds/Cracked/, load each WAV,
-    extract width label from folder name.
+    extract width label and series from folder name.
 
-    Folder pattern: specimen_X_Y<SoundData>...
+    Folder pattern: specimen_S_Y<SoundData>...
+      S=1 → Series 1 (train/val), S=2 → Series 2 (test)
       Y=1 → 0.2mm → label 0
       Y=2 → 0.4mm → label 1
       Y=3 → 0.6mm → label 2
     """
     import re
-    X, y = [], []
-    pattern = re.compile(r"specimen_\d+_(\d+)")
+    X, y, series = [], [], []
+    pattern = re.compile(r"specimen_(\d+)_(\d+)")
 
     for folder in sorted(os.listdir(data_dir)):
         match = pattern.search(folder)
         if not match:
             continue
-        width_digit = int(match.group(1))
-        label = width_digit - 1   # 1→0, 2→1, 3→2
+        series_num  = int(match.group(1))   # 1 or 2
+        width_digit = int(match.group(2))
+        label = width_digit - 1             # 1→0, 2→1, 3→2
 
         folder_path = os.path.join(data_dir, folder, "Sounds")
         if not os.path.isdir(folder_path):
@@ -104,15 +112,19 @@ def load_dataset(data_dir):
                     audio = audio[:NUM_SAMPLES]
                 X.append(audio.astype(np.float32))
                 y.append(label)
+                series.append(series_num)
             except Exception as e:
                 print(f"  Warning: could not load {fpath}: {e}")
 
-    X = np.array(X, dtype=np.float32)
-    y = np.array(y, dtype=np.int64)
+    X      = np.array(X,      dtype=np.float32)
+    y      = np.array(y,      dtype=np.int64)
+    series = np.array(series, dtype=np.int64)
     print(f"Loaded {len(y)} files")
     for i, name in enumerate(CLASS_NAMES):
-        print(f"  {name}: {(y == i).sum()} files")
-    return X, y
+        print(f"  {name}: {(y == i).sum()} files  "
+              f"(Series1={((y==i)&(series==1)).sum()}, "
+              f"Series2={((y==i)&(series==2)).sum()})")
+    return X, y, series
 
 
 # ============================================================
@@ -231,22 +243,30 @@ def main():
     # 1. Load data
     # ----------------------------------------------------------
     print("\n--- Loading WAV files ---")
-    X, y = load_dataset(DATA_DIR)
+    X, y, series = load_dataset(DATA_DIR)
 
     # ----------------------------------------------------------
-    # 2. Stratified 80/10/10 split
+    # 2. Specimen-level split: Series 1 → train/val, Series 2 → test
     # ----------------------------------------------------------
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.20, stratify=y, random_state=RANDOM_STATE
-    )
+    mask_s1 = series == 1
+    mask_s2 = series == 2
+
+    X_trainval, y_trainval = X[mask_s1], y[mask_s1]
+    X_test,     y_test     = X[mask_s2], y[mask_s2]
+
+    # Hold out 15% of Series 1 for validation (stratified)
     X_train, X_val, y_train, y_val = train_test_split(
-        X_train, y_train, test_size=0.125, stratify=y_train, random_state=RANDOM_STATE
+        X_trainval, y_trainval, test_size=0.15, stratify=y_trainval,
+        random_state=RANDOM_STATE
     )
-    print(f"\nSplit: train={len(y_train)}, val={len(y_val)}, test={len(y_test)}")
+    print(f"\nSpecimen-level split:")
+    print(f"  Train (Series 1, 85%): {len(y_train)} files")
+    print(f"  Val   (Series 1, 15%): {len(y_val)} files")
+    print(f"  Test  (Series 2):      {len(y_test)} files")
     for i, name in enumerate(CLASS_NAMES):
-        print(f"  Train {name}: {(y_train==i).sum()}  "
-              f"Val {name}: {(y_val==i).sum()}  "
-              f"Test {name}: {(y_test==i).sum()}")
+        print(f"  {name}: train={( y_train==i).sum()}  "
+              f"val={(y_val==i).sum()}  "
+              f"test={(y_test==i).sum()}")
 
     # ----------------------------------------------------------
     # 3. Datasets & DataLoaders

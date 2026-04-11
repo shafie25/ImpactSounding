@@ -95,7 +95,7 @@ Cracked breakdown by task:
 
 Every block has a unique resonance profile shaped by its exact geometry, material variation, and surface texture. These differences between blocks are much larger than the differences between crack widths. When the test set contains hits from the same block as the training set, the model trivially memorizes the block identity rather than learning crack width physics.
 
-**What happens with a proper split:** When we train on series 1 specimens and test on series 2 specimens (completely unseen physical blocks), accuracy drops to **~34–42%** — essentially random guessing for a 3-class problem (33% baseline).
+**What happens with a proper split:** When we train on series 1 specimens and test on series 2 specimens (completely unseen physical blocks), accuracy drops to **~33–42%** across all five models (RF, XGBoost, SVM, MLP, 1D CNN) — essentially random guessing for a 3-class problem (33% baseline).
 
 **Why this can't be fixed with this dataset:** There are only 2 physical blocks per width class (one per series). You cannot learn a generalizable width signal from 1 training example per class at the specimen level.
 
@@ -158,8 +158,8 @@ The best possible split for depth is leave-one-specimen-out within series 1, whi
 
 | Task | Paper Accuracy | Our Proper Split | Root Cause |
 |------|---------------|-----------------|------------|
-| Crack Detection | 97.59% | 99.70% (our SVM) | No leakage issue here — intact vs. cracked is a strong, generalizable signal |
-| Crack Width | 99.44% | ~34–42% | Specimen-level leakage; only 2 blocks per class; no generalizable width signal found |
+| Crack Detection | 97.59% | 99.70–99.75% (SVM / 1D CNN) | No leakage issue here — intact vs. cracked is a strong, generalizable signal |
+| Crack Width | 99.44% | ~33–42% (all 5 models) | Specimen-level leakage; only 2 blocks per class; no generalizable width signal found |
 | Crack Depth | 96.67% | 65–89% | Specimen-level leakage + position confound; apparent signal may be C02 vs C04 distance, not true depth |
 
 The crack detection task is reliable. The crack width and depth results from the paper are not reproducible under a proper evaluation methodology, and the dataset is too small (6 physical specimens total) to resolve this.

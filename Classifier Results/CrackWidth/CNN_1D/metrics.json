@@ -1,13 +1,13 @@
 {
   "model": "CNN_1D",
   "task": "CrackWidth",
-  "test_accuracy": 1.0,
-  "test_f1_macro": 1.0,
-  "test_f1_02mm": 1.0,
-  "test_f1_04mm": 1.0,
-  "test_f1_06mm": 1.0,
+  "test_accuracy": 0.3333,
+  "test_f1_macro": 0.1667,
+  "test_f1_02mm": 0.5,
+  "test_f1_04mm": 0.0,
+  "test_f1_06mm": 0.0,
   "cv_accuracy": 1.0,
   "cv_f1_macro": 1.0,
-  "best_epoch": 3,
+  "best_epoch": 2,
   "best_val_f1": 1.0
 }

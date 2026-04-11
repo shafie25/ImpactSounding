@@ -6,10 +6,8 @@ venv/
 
 # Large data folders
 MFCC_Images/
-Sounds/
 Specimens/
 JapanDataset2/
-Sound/
 
 # Python cache
 __pycache__/

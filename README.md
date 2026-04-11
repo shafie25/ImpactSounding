@@ -150,7 +150,6 @@ JapanesePaper2Code/
 │   ├── Cracked/                 1,800 × 224×224px MFCC spectrogram images
 │   └── Intact/                  8,236 × 224×224px MFCC spectrogram images
 ├── Original Paper Files/        paper's preprocessing scripts (not used by our pipeline)
-├── Sounds/                      200 demo WAVs provided with the paper
 ├── Specimens/
 │   ├── Class_sounds/
 │   │   ├── Cracked/             1,800 labeled WAV files (9 subfolders by specimen + position)
@@ -386,8 +385,9 @@ The 1D CNN trained directly on raw waveforms achieved **99.75% accuracy, 99.31% 
 | XGBoost | 41.8% | 38.2% | 99.67% | 99.67% |
 | SVM | 33.5% | 17.0% | 99.83% | 99.83% |
 | MLP | 33.2% | 19.2% | ~99% (val F1=1.00) | — |
+| 1D CNN | 33.3% | 16.7% | ~100% (val F1=1.00) | — |
 
-The stark contrast between CV (within series 1, ~99%) and test (series 2, 33-42%) confirms that the models are memorizing specimen-specific acoustic signatures rather than learning generalizable width features. The 33% test accuracy is near random chance (33.3% for a 3-class problem), meaning the models learn nothing that transfers to an unseen specimen.
+The stark contrast between CV (within series 1, ~99-100%) and test (series 2, 33-42%) confirms that the models are memorizing specimen-specific acoustic signatures rather than learning generalizable width features. The 33% test accuracy is near random chance (33.3% for a 3-class problem), meaning the models learn nothing that transfers to an unseen specimen.
 
 **Interpretation:** Crack width may be fundamentally difficult to distinguish from acoustic features alone when only 2 physical specimens (one per series) are available per width class. The tabular features (Df, Vf, MFCC statistics) that work well for crack *detection* (Cracked vs Intact, 9 distinct specimens) do not generalize for crack *width* classification when specimens are few and highly varied between series. The paper's 99.44% width result likely reflects a similar random-split leakage issue.
 
@@ -484,14 +484,14 @@ For crack detection (Level 1), fine-tuning is tractable: the crack vs. intact si
 - [x] **CNN on MFCC images** — EfficientNet-B0 feature extraction + MLP head. 92.33% accuracy. Lower than classical ML due to ImageNet domain mismatch and frozen backbone. Full fine-tuning on GPU would close the gap.
 - [x] **1D CNN on raw waveform** — fully end-to-end, no feature engineering. 99.75% accuracy, 99.31% F1. Best overall model — matches SVM without any hand-crafted features.
 - [x] **LSTM on MFCC frame sequences** — 9 frames × 13 coefficients per hit. 99.20% accuracy, 97.79% F1. Competitive with XGBoost without hand-crafted features.
-- [x] **MLP on tabular features** — same 29 features as classical classifiers, different learner. 99.60% accuracy, 98.89% F1. Outperforms XGBoost and LSTM; confirms the features are rich enough for a small NN to exploit.
+- [x] **MLP on tabular features** — same 29 features as classical classifiers, different learner. 99.70% accuracy, 99.17% F1. Outperforms XGBoost and LSTM; confirms the features are rich enough for a small NN to exploit.
 
 ### Classification Extensions
 - [x] **Crack width classification** — Level 2a: 3-class (0.2 / 0.4 / 0.6 mm). Specimen-level split reveals ~33-42% test accuracy — near-random chance on an unseen specimen. See Level 2a results above.
 - [x] **Crack depth classification** — Level 2b: binary (20 mm / 40 mm). Specimen-level split results 65–89% — better than width but confounded with hammer position. See Level 2b results above.
-- [ ] **Align MFCC features with paper** — re-extract using 12 coefficients (drop #1), max + mean per coefficient (24 features) for a fairer apples-to-apples comparison
+- [~] **Align MFCC features with paper** — not pursued. Our MFCC variant (13 coefficients, mean+std) already outperforms the paper's SVM on every metric. Re-extracting with their exact parameters (12 coefficients, max+mean) would require retraining all models for marginal scientific value.
 
 ### Transfer Learning (Bridge Dataset)
 - [x] **Zero-shot transfer** — apply lab-trained models to bridge recordings with no adaptation. 1D CNN achieves 72% per-file accuracy. Tabular models collapse to near-random. See Transfer Learning section above.
-- [x] **Frozen-backbone fine-tune** — freeze 1D CNN conv blocks, retrain head only on bridge training locations. Improves from 70% to 75% on the test split. Implemented in `Transfer_FineTune.py`.
-- [ ] **Bridge data impact granularity experiment** — currently each recording (4–5 impacts) is treated as one sample via majority vote. Two alternatives to explore: (1) treat each extracted impact as an independent training sample (multiplies effective training data ~4×), or (2) use only one representative impact per recording to avoid correlated samples inflating performance. This may particularly help the frozen-backbone fine-tune where training data is limited.
+- [x] **Frozen-backbone fine-tune** — freeze 1D CNN conv blocks, retrain head only on bridge training locations. Improves from 82.5% to 87.5% on the same test locations. Implemented in `Transfer_FineTune.py`.
+- [~] **Bridge data impact granularity experiment** — not pursued. On inspection, `Transfer_FineTune.py` already trains on each individual impact as a separate sample (`ImpactDataset` iterates over all segments); majority vote is only used at evaluation time. The only remaining variant — using one impact per file to reduce correlated samples — would reduce training data from ~560 to ~140 samples and is unlikely to improve results.
